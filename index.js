@@ -1,7 +1,10 @@
-import router from "./src/routes/index.routes.js";
-import Server from "./src/server/config.js";
+import app from "./src/app.js";
+import "colors";
 
-const server = new Server();
-server.app.use(`/api`, router);
+const port = process.env.PORT || 3001;
 
-server.listen();
+app.listen(port, () =>
+  console.info(
+    `EL SERVIDOR SE ESTA EJECUTANDO EN: http://localhost:${port}`.blue
+  )
+);
