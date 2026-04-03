@@ -3,7 +3,6 @@ import Gasto from "../models/gasto.js";
 
 // CREATE (Este queda igual, ahora guardará obra y remito gracias al cambio en el modelo)
 export const crearGasto = async (req, res) => {
-  console.log("BODY QUE LLEGA:", req.body);
   try {
     const nuevoGasto = new Gasto(req.body);
     await nuevoGasto.save();

@@ -2,7 +2,6 @@ import Cliente from "../models/cliente.js";
 
 // CREATE (ya la tenés)
 export const crearCliente = async (req, res) => {
-  console.log("BODY QUE LLEGA:", req.body);
   try {
     const nuevoCliente = new Cliente(req.body);
     await nuevoCliente.save();

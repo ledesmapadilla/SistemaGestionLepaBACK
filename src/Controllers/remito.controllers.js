@@ -1,5 +1,4 @@
 import Remito from "../models/remito.js";
-import mongoose from "mongoose";
 
 export const crearRemito = async (req, res) => {
   try {
@@ -12,9 +11,6 @@ export const crearRemito = async (req, res) => {
     if (!items || !items.length) {
       return res.status(400).json({ msg: "Debe haber al menos un item" });
     }
-
-    const fechaRemito = new Date(fecha);
-    fechaRemito.setHours(12, 0, 0, 0); //  anti zona horaria
 
     const remitoNuevo = new Remito({
       remito: Number(remito),
@@ -102,10 +98,6 @@ export const obtenerRemitos = async (req, res) => {
     if (estado) filtros.estado = estado;
 
     const remitos = await Remito.find(filtros)
-      .sort({ createdAt: -1 })
-
-      // AGREGAMOS .populate("obra") para traer los datos del cliente
-
       .populate("obra")
       .sort({ createdAt: -1 });
 

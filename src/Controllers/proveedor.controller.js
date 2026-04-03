@@ -1,7 +1,6 @@
 import Proveedor from "../models/proveedor.js";
 
 export const crearProveedor = async (req, res) => {
-  console.log("BODY QUE LLEGA:", req.body);
   try {
     const nuevoProveedor = new Proveedor(req.body);
     await nuevoProveedor.save();

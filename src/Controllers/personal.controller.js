@@ -1,7 +1,6 @@
 import Personal from "../models/personal.js";
 
 export const crearPersonal = async (req, res) => {
-  console.log("BODY QUE LLEGA:", req.body);
   try {
     const nuevoPersonal = new Personal(req.body);
     await nuevoPersonal.save();
