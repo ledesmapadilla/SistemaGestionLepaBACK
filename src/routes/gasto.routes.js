@@ -4,7 +4,7 @@ import {
   obtenerGastos, 
   editarGasto, 
   eliminarGasto  
-} from "../Controllers/gasto.controller.js";
+} from "../controllers/gasto.controller.js";
 
 const router = Router();
 

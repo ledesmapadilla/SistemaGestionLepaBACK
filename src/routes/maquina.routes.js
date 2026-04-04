@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { crearMaquina, obtenerMaquinas, editarMaquina, eliminarMaquina  } from "../Controllers/maquina.controller.js";
+import { crearMaquina, obtenerMaquinas, editarMaquina, eliminarMaquina  } from "../controllers/maquina.controller.js";
 
 
 const router = Router();

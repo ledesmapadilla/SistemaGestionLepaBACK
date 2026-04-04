@@ -5,7 +5,7 @@ import {
   obtenerObraPorId,
   editarObra,
   eliminarObra,
-} from "../Controllers/obra.controller.js";
+} from "../controllers/obra.controller.js";
 const router = Router();
 
 router.get("/", obtenerObras);

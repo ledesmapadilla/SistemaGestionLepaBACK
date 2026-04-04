@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { crearPersonal, obtenerPersonal, editarPersonal, eliminarPersonal  } from "../Controllers/personal.controller.js";
+import { crearPersonal, obtenerPersonal, editarPersonal, eliminarPersonal  } from "../controllers/personal.controller.js";
 
 
 const router = Router();
