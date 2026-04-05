@@ -4,7 +4,7 @@ const aceiteSchema = new Schema(
   {
     tipo: { type: String, required: true },
     marca: { type: String, required: true, trim: true },
-    denominacion: { type: String, required: true, trim: true },
+    denominacion: { type: String, trim: true },
     uso: { type: String, required: true, trim: true },
 
     movimientos: [

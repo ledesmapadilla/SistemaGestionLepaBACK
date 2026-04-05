@@ -1,5 +1,6 @@
 import Usuario from "../models/usuario.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export const crearUsuario = async (req, res) => {
   try {
@@ -91,7 +92,12 @@ export const loginUsuario = async (req, res) => {
       return res.status(401).json({ msg: "Usuario o contraseña incorrectos" });
     }
     const { contrasena: _, contrasenaVisible: __, ...usuarioSinPass } = usuarioDB.toObject();
-    res.status(200).json(usuarioSinPass);
+    const token = jwt.sign(
+      { id: usuarioDB._id, usuario: usuarioDB.usuario, rol: usuarioDB.rol },
+      process.env.JWT_SECRET,
+      { expiresIn: "5h" }
+    );
+    res.status(200).json({ ...usuarioSinPass, token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al iniciar sesión" });

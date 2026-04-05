@@ -11,15 +11,17 @@ import usuariosRoutes from "./usuario.routes.js";
 import variablesRoutes from "./variable.routes.js";
 import preciosRoutes from "./precio.routes.js";
 import consumoGasoilRoutes from "./consumoGasoil.routes.js";
-
-
-
-
-
-
+import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
 
+// Rutas públicas (sin token)
+router.use("/usuarios", usuariosRoutes);
+
+// Middleware de autenticación para todo lo demás
+router.use(verificarToken);
+
+// Rutas protegidas
 router.use("/clientes", clientesRoutes);
 router.use("/proveedores", proveedoresRoutes);
 router.use("/obras", obrasRoutes);
@@ -28,16 +30,8 @@ router.use("/personal", personalRoutes);
 router.use("/maquina", maquinaRoutes);
 router.use("/gastos", gastosRoutes);
 router.use("/aceites", aceitesRoutes);
-router.use("/usuarios", usuariosRoutes);
 router.use("/variables", variablesRoutes);
 router.use("/precios", preciosRoutes);
 router.use("/consumo-gasoil", consumoGasoilRoutes);
-
-
-
-
-
-
-
 
 export default router;
