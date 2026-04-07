@@ -10,7 +10,6 @@ const obraSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      lowercase: true,
       unique: true,
     },
     contacto: {

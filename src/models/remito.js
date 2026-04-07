@@ -22,6 +22,7 @@ const itemSchema = new mongoose.Schema({
     default: 0,
   },
   gasoil: Number,
+  observaciones: String,
 });
 
 const remitoSchema = new mongoose.Schema(

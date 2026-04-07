@@ -27,6 +27,7 @@ export const crearRemito = async (req, res) => {
         precioUnitario: Number(item.precioUnitario),
         costoHoraPersonal: Number(item.costoHoraPersonal || 0),
         gasoil: Number(item.gasoil || 0),
+        observaciones: item.observaciones || "",
       })),
     });
 
@@ -182,6 +183,7 @@ export const editarItemRemito = async (req, res) => {
     if (datos.costoHoraPersonal !== undefined)
       item.costoHoraPersonal = Number(datos.costoHoraPersonal);
     if (datos.gasoil !== undefined) item.gasoil = Number(datos.gasoil);
+    if (datos.observaciones !== undefined) item.observaciones = datos.observaciones;
 
     await remito.save();
 
