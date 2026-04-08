@@ -19,7 +19,12 @@ const clienteSchema = new mongoose.Schema(
       type: String,
       
     },
-    telefono: String
+    telefono: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    }
   },
   { timestamps: true }
 );

@@ -12,6 +12,9 @@ export const crearCliente = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    if (error.code === 11000) {
+      return res.status(400).json({ mensaje: "El teléfono ya está registrado en otro cliente" });
+    }
     res.status(500).json({ msg: "Error al crear cliente" });
   }
 };
@@ -60,6 +63,9 @@ export const editarCliente = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    if (error.code === 11000) {
+      return res.status(400).json({ mensaje: "El teléfono ya está registrado en otro cliente" });
+    }
     res.status(500).json({ msg: "Error al editar cliente" });
   }
 };

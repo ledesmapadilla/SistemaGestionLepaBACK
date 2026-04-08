@@ -22,7 +22,13 @@ const proveedorSchema = new mongoose.Schema(
       type: String,
       
     },
-    telefono: String
+    telefono: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      sparse: true,
+    }
   },
   { timestamps: true }
 );
