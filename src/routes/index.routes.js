@@ -11,6 +11,7 @@ import usuariosRoutes from "./usuario.routes.js";
 import variablesRoutes from "./variable.routes.js";
 import preciosRoutes from "./precio.routes.js";
 import consumoGasoilRoutes from "./consumoGasoil.routes.js";
+import facturasRoutes from "./factura.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -33,5 +34,6 @@ router.use("/aceites", aceitesRoutes);
 router.use("/variables", variablesRoutes);
 router.use("/precios", preciosRoutes);
 router.use("/consumo-gasoil", consumoGasoilRoutes);
+router.use("/facturas", facturasRoutes);
 
 export default router;

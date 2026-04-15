@@ -96,7 +96,7 @@ export const obtenerRemitos = async (req, res) => {
 
     const filtros = {};
     if (obra) filtros.obra = obra;
-    if (estado) filtros.estado = estado;
+    if (estado) filtros.estado = { $regex: `^${estado}$`, $options: "i" };
 
     const remitos = await Remito.find(filtros)
       .populate("obra")
