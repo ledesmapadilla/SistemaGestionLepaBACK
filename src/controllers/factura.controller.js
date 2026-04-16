@@ -20,9 +20,8 @@ export const crearFactura = async (req, res) => {
     const nuevaFactura = new Factura({ fecha, tipoFactura, numeroFactura, cliente, remitos, total });
     await nuevaFactura.save();
 
-    console.log("IDs a actualizar:", remitos);
-    const resultado = await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Facturado" });
-    console.log("Remitos actualizados:", resultado.modifiedCount);
+    const nuevoEstado = tipoFactura === "Nota de Crédito" ? "Sin facturar" : "Facturado";
+    await Remito.updateMany({ _id: { $in: remitos } }, { estado: nuevoEstado });
 
     res.status(201).json({ msg: "Factura creada correctamente", factura: nuevaFactura });
   } catch (error) {
