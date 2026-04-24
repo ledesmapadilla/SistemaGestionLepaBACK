@@ -1,5 +1,6 @@
 import Obra from "../models/obra.js";
 import Cliente from "../models/cliente.js";
+import Remito from "../models/remito.js";
 
 // CREATE (ya la tenés)
 export const crearObra = async (req, res) => {
@@ -89,6 +90,7 @@ export const editarObra = async (req, res) => {
 // DELETE
 export const eliminarObra = async (req, res) => {
   try {
+    await Remito.deleteMany({ obra: req.params.id });
     await Obra.findByIdAndDelete(req.params.id);
     res.status(200).json({ msg: "Obra eliminada" });
   } catch (error) {
