@@ -10,7 +10,7 @@ export const obtenerCuentaCorriente = async (req, res) => {
       Factura.find()
         .populate({ path: "remitos", populate: { path: "obra" } })
         .sort({ fecha: 1 }),
-      Cobro.find().sort({ fecha: 1 }),
+      Cobro.find().populate({ path: "pagos.factura", select: "numeroFactura" }).sort({ fecha: 1 }),
     ]);
 
     const movFacturas = facturas.map((f) => {
@@ -26,7 +26,7 @@ export const obtenerCuentaCorriente = async (req, res) => {
         fecha: f.fecha,
         cliente: f.cliente,
         tipo: "Factura",
-        descripcion: `${f.tipoFactura} N° ${f.numeroFactura}`,
+        descripcion: `${f.tipoFactura} - N° ${f.numeroFactura}`,
         obras,
         debito: esNota ? 0 : monto,
         credito: esNota ? Math.abs(monto) : 0,
@@ -43,12 +43,18 @@ export const obtenerCuentaCorriente = async (req, res) => {
         c.mediosPago?.length > 0
           ? c.mediosPago.map((m) => m.medioPago).join(", ")
           : c.medioPago || "-";
+      const numeros = [
+        ...new Set(
+          (c.pagos || []).map((p) => p.factura?.numeroFactura).filter(Boolean)
+        ),
+      ];
+      const nroStr = numeros.length > 0 ? `Factura N° ${numeros.join(", ")} - ` : "";
       return {
         _id: c._id,
         fecha: c.fecha,
         cliente: c.cliente,
         tipo: "Cobro",
-        descripcion: medios,
+        descripcion: `${nroStr}${medios}`,
         obras: [],
         debito: 0,
         credito: totalCobrado,
