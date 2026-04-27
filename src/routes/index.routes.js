@@ -13,6 +13,7 @@ import preciosRoutes from "./precio.routes.js";
 import consumoGasoilRoutes from "./consumoGasoil.routes.js";
 import facturasRoutes from "./factura.routes.js";
 import cobrosRoutes from "./cobro.routes.js";
+import cuentaCorrienteRoutes from "./cuentaCorriente.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -37,5 +38,6 @@ router.use("/precios", preciosRoutes);
 router.use("/consumo-gasoil", consumoGasoilRoutes);
 router.use("/facturas", facturasRoutes);
 router.use("/cobros", cobrosRoutes);
+router.use("/cuenta-corriente", cuentaCorrienteRoutes);
 
 export default router;
