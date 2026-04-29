@@ -15,6 +15,9 @@ const medioPagoSchema = new mongoose.Schema(
       default: "En cartera",
     },
     proveedor: { type: String, default: "" },
+    tasaInteres: { type: Number, default: null },
+    gastosPorc: { type: Number, default: null },
+    montoDescontado: { type: Number, default: null },
     observaciones: { type: String, default: "" },
   },
   { _id: false }

@@ -92,13 +92,16 @@ export const editarCobro = async (req, res) => {
 export const actualizarEstadoMedioPago = async (req, res) => {
   try {
     const { cobroId, medioIndex } = req.params;
-    const { estado, observaciones, proveedor } = req.body;
+    const { estado, observaciones, proveedor, tasaInteres, gastosPorc, montoDescontado } = req.body;
     const updated = await Cobro.findByIdAndUpdate(
       cobroId,
       {
         $set: {
           [`mediosPago.${medioIndex}.estado`]: estado,
           [`mediosPago.${medioIndex}.proveedor`]: proveedor ?? "",
+          [`mediosPago.${medioIndex}.tasaInteres`]: tasaInteres ?? null,
+          [`mediosPago.${medioIndex}.gastosPorc`]: gastosPorc ?? null,
+          [`mediosPago.${medioIndex}.montoDescontado`]: montoDescontado ?? null,
           [`mediosPago.${medioIndex}.observaciones`]: observaciones ?? "",
         },
       },
