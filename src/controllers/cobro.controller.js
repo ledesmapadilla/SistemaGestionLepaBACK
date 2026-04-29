@@ -89,6 +89,29 @@ export const editarCobro = async (req, res) => {
   }
 };
 
+export const actualizarEstadoMedioPago = async (req, res) => {
+  try {
+    const { cobroId, medioIndex } = req.params;
+    const { estado, observaciones, proveedor } = req.body;
+    const updated = await Cobro.findByIdAndUpdate(
+      cobroId,
+      {
+        $set: {
+          [`mediosPago.${medioIndex}.estado`]: estado,
+          [`mediosPago.${medioIndex}.proveedor`]: proveedor ?? "",
+          [`mediosPago.${medioIndex}.observaciones`]: observaciones ?? "",
+        },
+      },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ msg: "Cobro no encontrado" });
+    res.status(200).json({ msg: "Estado actualizado", cobro: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al actualizar estado" });
+  }
+};
+
 export const eliminarCobro = async (req, res) => {
   try {
     const cobro = await Cobro.findByIdAndDelete(req.params.id);

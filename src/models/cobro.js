@@ -9,6 +9,13 @@ const medioPagoSchema = new mongoose.Schema(
     monto: { type: Number },
     numeroCheque: { type: String, default: "" },
     fechaCobro: { type: String, default: "" },
+    estado: {
+      type: String,
+      enum: ["En cartera", "Utilizado", "Depositado", "Pago proveedores", "Depósito en banco", "Cambio", "Otros"],
+      default: "En cartera",
+    },
+    proveedor: { type: String, default: "" },
+    observaciones: { type: String, default: "" },
   },
   { _id: false }
 );
