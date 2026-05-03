@@ -16,6 +16,7 @@ import cobrosRoutes from "./cobro.routes.js";
 import cuentaCorrienteRoutes from "./cuentaCorriente.routes.js";
 import asistenciaRoutes from "./asistencia.routes.js";
 import serviceMaquinaRoutes from "./serviceMaquina.routes.js";
+import tableroRoutes from "./tablero.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -43,5 +44,6 @@ router.use("/cobros", cobrosRoutes);
 router.use("/cuenta-corriente", cuentaCorrienteRoutes);
 router.use("/asistencia", asistenciaRoutes);
 router.use("/service-maquina", serviceMaquinaRoutes);
+router.use("/tablero", tableroRoutes);
 
 export default router;
