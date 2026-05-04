@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { obtenerTablero } from "../Controllers/tablero.controller.js";
+import { obtenerTablero } from "../controllers/tablero.controller.js";
 
 const router = Router();
 
