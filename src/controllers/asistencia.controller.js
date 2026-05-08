@@ -17,13 +17,22 @@ export const obtenerAsistencia = async (req, res) => {
 export const guardarAsistencia = async (req, res) => {
   try {
     const { fecha, registros } = req.body;
-    const doc = await Asistencia.findOneAndUpdate(
-      { fecha },
-      { fecha, registros },
-      { new: true, upsert: true, runValidators: true }
-    );
+    console.log("RECIBIDO:", fecha, registros?.map(r => `${r.personal}=remito:${r.remito}`).join(", "));
+
+    let doc = await Asistencia.findOne({ fecha });
+    if (doc) {
+      doc.registros = registros;
+      doc.markModified("registros");
+      await doc.save();
+    } else {
+      doc = new Asistencia({ fecha, registros });
+      await doc.save();
+    }
+
+    console.log("GUARDADO:", doc.registros?.map(r => `${r.personal}=remito:${r.remito}`).join(", "));
     res.status(200).json({ msg: "Asistencia guardada", data: doc });
   } catch (error) {
+    console.error("Error en guardarAsistencia:", error);
     res.status(500).json({ msg: "Error al guardar asistencia", detalle: error.message });
   }
 };

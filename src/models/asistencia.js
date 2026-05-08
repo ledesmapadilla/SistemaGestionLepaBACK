@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const registroSchema = new mongoose.Schema({
   personal: { type: String },
   ausente: { type: Boolean, default: false },
+  remito: { type: Boolean, default: false },
   entra: { type: String },
   sale: { type: String },
   maquina: { type: String },
