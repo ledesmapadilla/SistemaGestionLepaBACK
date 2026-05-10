@@ -2,7 +2,9 @@ import Personal from "../models/personal.js";
 
 export const crearPersonal = async (req, res) => {
   try {
-    const nuevoPersonal = new Personal(req.body);
+    const hoy = new Date();
+    const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+    const nuevoPersonal = new Personal({ ...req.body, fechaAlta: fechaHoy });
     await nuevoPersonal.save();
     res.status(201).json({
       msg: "Personal creado correctamente",
@@ -44,9 +46,21 @@ export const obtenerPersonal = async (req, res) => {
 // UPDATE
 export const editarPersonal = async (req, res) => {
   try {
+    const updateData = { ...req.body };
+
+    if (updateData.activo === false) {
+      const actual = await Personal.findById(req.params.id);
+      if (actual && actual.activo !== false && !actual.fechaDesactivado) {
+        const hoy = new Date();
+        updateData.fechaDesactivado = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+      }
+    } else if (updateData.activo === true) {
+      updateData.fechaDesactivado = null;
+    }
+
     const personalActualizado = await Personal.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     );
 

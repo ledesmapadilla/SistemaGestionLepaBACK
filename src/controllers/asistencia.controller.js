@@ -45,3 +45,22 @@ export const eliminarAsistencia = async (req, res) => {
     res.status(500).json({ msg: "Error al eliminar asistencia", detalle: error.message });
   }
 };
+
+export const eliminarPersonalDeAsistencias = async (req, res) => {
+  try {
+    const { nombre, desde } = req.query;
+    if (!nombre) return res.status(400).json({ msg: "Falta el nombre" });
+
+    const filtroDoc = desde ? { fecha: { $gte: desde } } : {};
+    const result = await Asistencia.updateMany(
+      filtroDoc,
+      { $pull: { registros: { personal: { $regex: new RegExp(`^${nombre.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } } } }
+    );
+
+    console.log(`Eliminado "${nombre}" desde ${desde}: ${result.modifiedCount} planillas modificadas`);
+    res.status(200).json({ msg: `Personal eliminado de ${result.modifiedCount} planillas`, modificados: result.modifiedCount });
+  } catch (error) {
+    console.error("Error en eliminarPersonalDeAsistencias:", error);
+    res.status(500).json({ msg: "Error al eliminar personal de asistencias", detalle: error.message });
+  }
+};

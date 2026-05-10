@@ -14,6 +14,9 @@ const personalSchema = new mongoose.Schema(
         cantJornales: { type: Number, default: 0 },
       },
     ],
+    activo: { type: Boolean, default: true },
+    fechaAlta: { type: String, default: null },
+    fechaDesactivado: { type: String, default: null },
   },
   { timestamps: true }
 );
