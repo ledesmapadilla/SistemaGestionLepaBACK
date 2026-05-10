@@ -11,6 +11,7 @@ const personalSchema = new mongoose.Schema(
       {
         valor: { type: Number, required: true },
         fecha: { type: String },
+        cantJornales: { type: Number, default: 0 },
       },
     ],
   },
