@@ -19,6 +19,8 @@ import gastoSemanalRoutes from "./gastoSemanal.routes.js";
 import serviceMaquinaRoutes from "./serviceMaquina.routes.js";
 import tableroRoutes from "./tablero.routes.js";
 import facturasProveedoresRoutes from "./facturaProveedor.routes.js";
+import pagosProveedoresRoutes from "./pagoProveedor.routes.js";
+import cuentaCorrienteProveedorRoutes from "./cuentaCorrienteProveedor.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -49,5 +51,7 @@ router.use("/gasto-semanal", gastoSemanalRoutes);
 router.use("/service-maquina", serviceMaquinaRoutes);
 router.use("/tablero", tableroRoutes);
 router.use("/facturas-proveedores", facturasProveedoresRoutes);
+router.use("/pagos-proveedores", pagosProveedoresRoutes);
+router.use("/cuenta-corriente-proveedores", cuentaCorrienteProveedorRoutes);
 
 export default router;

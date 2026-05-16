@@ -10,11 +10,25 @@ const EXCLUIDAS = [
 
 export const obtenerTablero = async (req, res) => {
   try {
-    const [maquinas, services, asistencias] = await Promise.all([
+    const [maquinas, services, maxPorMaquina] = await Promise.all([
       Maquina.find(),
       ServiceMaquina.find(),
-      Asistencia.find(),
+      Asistencia.aggregate([
+        { $unwind: "$registros" },
+        { $match: { "registros.maquina": { $exists: true, $ne: null, $ne: "" } } },
+        { $addFields: {
+          maquinaLow: { $toLower: { $trim: { input: "$registros.maquina" } } },
+          horometroNum: { $convert: { input: "$registros.horometro", to: "double", onError: 0, onNull: 0 } },
+        }},
+        { $match: { horometroNum: { $gt: 0 } } },
+        { $sort: { horometroNum: 1 } },
+        { $group: { _id: "$maquinaLow", horometro: { $last: "$horometroNum" }, fecha: { $last: "$fecha" } } },
+      ]),
     ]);
+
+    const asistenciaMap = Object.fromEntries(
+      maxPorMaquina.map((item) => [item._id, { horometro: item.horometro, fecha: item.fecha }])
+    );
 
     const maquinasFiltradas = maquinas.filter(
       (m) => !EXCLUIDAS.includes(m.maquina?.toLowerCase().trim())
@@ -31,18 +45,9 @@ export const obtenerTablero = async (req, res) => {
         ? horasServices.reduce((max, s) => Number(s.horometro) > Number(max.horometro) ? s : max)
         : null;
 
-      // Horómetro desde Asistencia
-      let maxAst = null;
-      for (const dia of asistencias) {
-        for (const reg of (dia.registros || [])) {
-          if (reg.maquina?.toLowerCase().trim() === nombreLow && reg.horometro) {
-            const val = Number(reg.horometro);
-            if (!isNaN(val) && (maxAst === null || val > maxAst.horometro)) {
-              maxAst = { horometro: val, fecha: dia.fecha };
-            }
-          }
-        }
-      }
+      // Horómetro desde Asistencia (pre-calculado con aggregation)
+      const astData = asistenciaMap[nombreLow] || null;
+      const maxAst = astData ? { horometro: astData.horometro, fecha: astData.fecha } : null;
 
       // Horómetro actual: el mayor entre ambas fuentes
       let horometroActual = null;

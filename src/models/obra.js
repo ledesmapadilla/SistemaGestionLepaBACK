@@ -16,6 +16,10 @@ const obraSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    telefono: {
+      type: String,
+      default: "",
+    },
 
     estado: {
       type: String,
