@@ -18,6 +18,7 @@ import asistenciaRoutes from "./asistencia.routes.js";
 import gastoSemanalRoutes from "./gastoSemanal.routes.js";
 import serviceMaquinaRoutes from "./serviceMaquina.routes.js";
 import tableroRoutes from "./tablero.routes.js";
+import facturasProveedoresRoutes from "./facturaProveedor.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -47,5 +48,6 @@ router.use("/asistencia", asistenciaRoutes);
 router.use("/gasto-semanal", gastoSemanalRoutes);
 router.use("/service-maquina", serviceMaquinaRoutes);
 router.use("/tablero", tableroRoutes);
+router.use("/facturas-proveedores", facturasProveedoresRoutes);
 
 export default router;
