@@ -11,6 +11,7 @@ const facturaProveedorSchema = new mongoose.Schema(
     numeroFactura: { type: String, required: true },
     proveedor: { type: String, required: true },
     concepto: { type: String, default: "" },
+    obra: { type: String, default: "" },
     total: { type: Number, default: 0 },
     estadoPago: {
       type: String,
