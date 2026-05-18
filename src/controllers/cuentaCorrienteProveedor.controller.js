@@ -21,7 +21,8 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
         fecha: f.fecha,
         proveedor: f.proveedor,
         tipo: "Factura",
-        descripcion: `${f.tipoFactura} - N° ${f.numeroFactura}`,
+        numeroFactura: `${f.tipoFactura} N° ${f.numeroFactura}`,
+        descripcion: f.concepto || "-",
         obra: f.obra || "",
         debito: esNota ? 0 : monto,
         credito: esNota ? Math.abs(monto) : 0,
@@ -34,13 +35,13 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
       const numeros = [
         ...new Set((p.pagos || []).map((i) => i.factura?.numeroFactura).filter(Boolean)),
       ];
-      const nroStr = numeros.length > 0 ? `Factura N° ${numeros.join(", ")} - ` : "";
       return {
         _id: p._id,
         fecha: p.fecha,
         proveedor: p.proveedor,
         tipo: "Pago",
-        descripcion: `${nroStr}${medios}`,
+        numeroFactura: numeros.length > 0 ? numeros.join(", ") : "-",
+        descripcion: medios,
         obra: "",
         debito: 0,
         credito: totalPagado,
