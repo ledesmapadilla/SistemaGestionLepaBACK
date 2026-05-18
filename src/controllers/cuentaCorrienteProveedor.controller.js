@@ -21,7 +21,7 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
         fecha: f.fecha,
         proveedor: f.proveedor,
         tipo: "Factura",
-        numeroFactura: `${f.tipoFactura} N° ${f.numeroFactura}`,
+        numeroFactura: `${f.tipoFactura} - N° ${f.numeroFactura}`,
         descripcion: f.concepto || "-",
         obra: f.obra || "",
         debito: esNota ? 0 : monto,
