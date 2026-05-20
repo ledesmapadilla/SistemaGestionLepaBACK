@@ -18,11 +18,16 @@ const DB_STATES = { 0: "disconnected", 1: "connected", 2: "connecting", 3: "disc
 
 app.get("/api/health", (_req, res) => {
   const state = mongoose.connection.readyState;
+  const uri = process.env.MONGODB ?? "";
+  const uriSanitized = uri
+    ? uri.replace(/:\/\/([^:]+):([^@]+)@/, "://<user>:<pass>@")
+    : "(no configurada)";
   res.json({
     status: "ok",
     mongodb: DB_STATES[state] ?? "unknown",
     mongoState: state,
     lastDbError,
+    uriSanitized,
     env: {
       MONGODB: !!process.env.MONGODB,
       JWT_SECRET: !!process.env.JWT_SECRET,
