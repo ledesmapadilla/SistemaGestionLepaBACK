@@ -39,12 +39,15 @@ app.get("/api/health", (_req, res) => {
 
 // ── Guard: conectar a MongoDB y esperar antes de procesar el request ─────────
 app.use("/api", async (req, res, next) => {
+  console.info(`[APP] Request: ${req.method} ${req.path} — esperando DB...`);
+  const t0 = Date.now();
   try {
     await getDbConnection();
+    console.info(`[APP] DB lista en ${Date.now() - t0}ms — procesando ${req.method} ${req.path}`);
     next();
   } catch (err) {
     const state = mongoose.connection.readyState;
-    console.error(`[APP] DB no disponible (state=${state}): ${req.method} ${req.path} — ${err.message}`);
+    console.error(`[APP] DB falló en ${Date.now() - t0}ms (state=${state}): ${req.method} ${req.path} — ${err.message}`);
     return res.status(503).json({
       msg: "Base de datos no disponible",
       error: err.message,
