@@ -1,21 +1,36 @@
 import mongoose from "mongoose";
 
-if (!process.env.MONGODB) {
-  console.error("CRITICAL: La variable de entorno MONGODB no está definida.");
+const uri = process.env.MONGODB;
+
+if (!uri) {
+  console.error("[DB] CRITICO: variable MONGODB no definida en env.");
 } else {
-  mongoose.connect(process.env.MONGODB, {
+  // Ocultar credenciales en logs
+  const uriLog = uri.replace(/:\/\/([^:]+):([^@]+)@/, "://<user>:<pass>@");
+  console.info(`[DB] Conectando a: ${uriLog}`);
+
+  mongoose.connect(uri, {
     maxPoolSize: 5,
     serverSelectionTimeoutMS: 8000,
     socketTimeoutMS: 30000,
-    heartbeatFrequencyMS: 30000,
     family: 4,
   })
     .then(() => {
-      console.info(`Base de datos ${mongoose.connection.name} conectada exitosamente`);
+      console.info(`[DB] Conectada: ${mongoose.connection.name}`);
     })
-    .catch((error) => {
-      console.error("Error al conectar a la base de datos:", error.message);
+    .catch((err) => {
+      console.error(`[DB] Error de conexión: ${err.name} — ${err.message}`);
     });
+
+  mongoose.connection.on("disconnected", () =>
+    console.warn("[DB] Desconectada de MongoDB")
+  );
+  mongoose.connection.on("reconnected", () =>
+    console.info("[DB] Reconectada a MongoDB")
+  );
+  mongoose.connection.on("error", (err) =>
+    console.error(`[DB] Error en conexión activa: ${err.message}`)
+  );
 }
 
 export default mongoose;
