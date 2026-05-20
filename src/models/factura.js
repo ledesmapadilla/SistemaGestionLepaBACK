@@ -21,4 +21,8 @@ const facturaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+facturaSchema.index({ cliente: 1 });
+facturaSchema.index({ estadoPago: 1 });
+facturaSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Factura", facturaSchema);

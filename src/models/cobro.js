@@ -47,4 +47,8 @@ const cobroSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+cobroSchema.index({ cliente: 1 });
+cobroSchema.index({ "pagos.factura": 1 });
+cobroSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Cobro", cobroSchema);

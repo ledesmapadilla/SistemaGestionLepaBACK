@@ -11,8 +11,8 @@ const EXCLUIDAS = [
 export const obtenerTablero = async (req, res) => {
   try {
     const [maquinas, services, maxPorMaquina] = await Promise.all([
-      Maquina.find(),
-      ServiceMaquina.find(),
+      Maquina.find().lean(),
+      ServiceMaquina.find().lean(),
       Asistencia.aggregate([
         { $unwind: "$registros" },
         { $match: { "registros.maquina": { $exists: true, $ne: null, $ne: "" } } },

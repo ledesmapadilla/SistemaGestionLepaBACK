@@ -22,4 +22,6 @@ const asistenciaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+asistenciaSchema.index({ "registros.maquina": 1 });
+
 export default mongoose.model("Asistencia", asistenciaSchema);

@@ -4,19 +4,26 @@ import Factura from "../models/factura.js";
 
 const recalcularEstadoFacturas = async (facturaIds) => {
   const ids = [...new Set(facturaIds.map((id) => id?.toString()).filter(Boolean))];
-  for (const facturaId of ids) {
-    const factura = await Factura.findById(facturaId);
-    if (!factura) continue;
-    const totalConIva = factura.tipoFactura === "Factura X" ? factura.total : factura.total * 1.21;
-    const resultado = await Cobro.aggregate([
-      { $unwind: "$pagos" },
-      { $match: { "pagos.factura": new mongoose.Types.ObjectId(facturaId) } },
-      { $group: { _id: null, total: { $sum: "$pagos.montoCobrado" } } },
-    ]);
-    const totalCobrado = resultado[0]?.total || 0;
-    const estadoPago = totalCobrado >= totalConIva - 0.01 ? "Pagada" : "Pendiente";
-    await Factura.findByIdAndUpdate(facturaId, { estadoPago });
-  }
+  if (!ids.length) return;
+
+  const facturas = await Factura.find({ _id: { $in: ids } }, "_id tipoFactura total").lean();
+  const facturaMap = Object.fromEntries(facturas.map((f) => [f._id.toString(), f]));
+
+  await Promise.all(
+    ids.map(async (facturaId) => {
+      const factura = facturaMap[facturaId];
+      if (!factura) return;
+      const totalConIva = factura.tipoFactura === "Factura X" ? factura.total : factura.total * 1.21;
+      const resultado = await Cobro.aggregate([
+        { $unwind: "$pagos" },
+        { $match: { "pagos.factura": new mongoose.Types.ObjectId(facturaId) } },
+        { $group: { _id: null, total: { $sum: "$pagos.montoCobrado" } } },
+      ]);
+      const totalCobrado = resultado[0]?.total || 0;
+      const estadoPago = totalCobrado >= totalConIva - 0.01 ? "Pagada" : "Pendiente";
+      await Factura.findByIdAndUpdate(facturaId, { estadoPago });
+    })
+  );
 };
 
 export const recalcularTodasLasFacturas = async (req, res) => {
@@ -32,20 +39,20 @@ export const recalcularTodasLasFacturas = async (req, res) => {
 
 export const obtenerCobros = async (req, res) => {
   try {
-    const cobros = await Cobro.find().sort({ createdAt: -1 });
+    const cobros = await Cobro.find().sort({ createdAt: -1 }).lean();
 
     const facturaIds = [...new Set(
       cobros.flatMap((c) => (c.pagos || []).map((p) => p.factura?.toString()).filter(Boolean))
     )];
     const facturas = await Factura.find({ _id: { $in: facturaIds } })
-      .populate({ path: "remitos", populate: { path: "obra" } });
-    const facturaMap = {};
-    facturas.forEach((f) => { facturaMap[f._id.toString()] = f.toObject(); });
+      .populate({ path: "remitos", populate: { path: "obra" } })
+      .lean();
+    const facturaMap = Object.fromEntries(facturas.map((f) => [f._id.toString(), f]));
 
     const cobrosPopulados = cobros.map((c) => ({
-      ...c.toObject(),
+      ...c,
       pagos: (c.pagos || []).map((p) => ({
-        ...p.toObject(),
+        ...p,
         factura: facturaMap[p.factura?.toString()] ?? null,
       })),
     }));

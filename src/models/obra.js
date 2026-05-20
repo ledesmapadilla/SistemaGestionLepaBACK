@@ -53,4 +53,8 @@ const obraSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+obraSchema.index({ razonsocial: 1 });
+obraSchema.index({ estado: 1 });
+obraSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Obra", obraSchema);

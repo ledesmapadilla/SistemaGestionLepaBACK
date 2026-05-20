@@ -49,5 +49,8 @@ const remitoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 remitoSchema.index({ obra: 1, remito: 1 }, { unique: true });
+remitoSchema.index({ obra: 1 });
+remitoSchema.index({ estado: 1 });
+remitoSchema.index({ createdAt: -1 });
 
 export default mongoose.model("Remito", remitoSchema);

@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
 import "colors";
 
-mongoose.connect(process.env.MONGODB)
+mongoose.connect(process.env.MONGODB, {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  heartbeatFrequencyMS: 10000, // mantiene conexiones idle activas
+  family: 4,
+})
   .then(() => {
     console.info(`Base de datos ${mongoose.connection.name.green} conectada exitosamente`);
   })

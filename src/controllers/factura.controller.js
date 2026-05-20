@@ -5,7 +5,8 @@ export const obtenerFacturas = async (req, res) => {
   try {
     const facturas = await Factura.find()
       .populate({ path: "remitos", populate: { path: "obra" } })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     res.status(200).json(facturas);
   } catch (error) {
     console.error(error);
