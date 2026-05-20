@@ -23,6 +23,15 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/api", router);
+app.use("/api", (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      msg: "Base de datos no disponible",
+      mongoState: mongoose.connection.readyState,
+      hint: "Verificar MONGODB env var y IP whitelist en Atlas",
+    });
+  }
+  next();
+}, router);
 
 export default app;
