@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import { lastDbError, dbConnectionPromise } from "./server/dbConfig.js";
+import { lastDbError, getDbConnection } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
 
 console.info("[APP] Inicializando Express...");
@@ -32,13 +32,10 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// ── Guard: esperar conexión MongoDB antes de procesar el request ─────────────
+// ── Guard: conectar a MongoDB y esperar antes de procesar el request ─────────
 app.use("/api", async (req, res, next) => {
-  if (!dbConnectionPromise) {
-    return res.status(503).json({ msg: "Variable MONGODB no configurada" });
-  }
   try {
-    await dbConnectionPromise;
+    await getDbConnection();
     next();
   } catch (err) {
     const state = mongoose.connection.readyState;
