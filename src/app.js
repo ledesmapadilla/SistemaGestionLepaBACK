@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import { lastDbError } from "./server/dbConfig.js";
+import { lastDbError, dbConnectionPromise } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
 
 console.info("[APP] Inicializando Express...");
@@ -32,19 +32,24 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// ── Guard: abortar inmediatamente si MongoDB no está listo ───────────────────
-app.use("/api", (req, res, next) => {
-  const state = mongoose.connection.readyState;
-  if (state !== 1) {
-    console.error(`[APP] Solicitud rechazada (DB state=${state}): ${req.method} ${req.path}`);
+// ── Guard: esperar conexión MongoDB antes de procesar el request ─────────────
+app.use("/api", async (req, res, next) => {
+  if (!dbConnectionPromise) {
+    return res.status(503).json({ msg: "Variable MONGODB no configurada" });
+  }
+  try {
+    await dbConnectionPromise;
+    next();
+  } catch (err) {
+    const state = mongoose.connection.readyState;
+    console.error(`[APP] DB no disponible (state=${state}): ${req.method} ${req.path} — ${err.message}`);
     return res.status(503).json({
       msg: "Base de datos no disponible",
+      error: err.message,
       mongoState: state,
       mongoStateName: DB_STATES[state] ?? "unknown",
-      hint: "Verificar variable MONGODB en Vercel y Network Access en MongoDB Atlas",
     });
   }
-  next();
 }, router);
 
 // ── Error handler global ─────────────────────────────────────────────────────

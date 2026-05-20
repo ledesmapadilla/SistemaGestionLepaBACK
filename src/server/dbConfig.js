@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const uri = process.env.MONGODB;
 
 export let lastDbError = null;
+export let dbConnectionPromise = null;
 
 if (!uri) {
   console.error("[DB] CRITICO: variable MONGODB no definida en env.");
@@ -10,11 +11,13 @@ if (!uri) {
   const uriLog = uri.replace(/:\/\/([^:]+):([^@]+)@/, "://<user>:<pass>@");
   console.info(`[DB] Conectando a: ${uriLog}`);
 
-  mongoose.connect(uri, {
+  dbConnectionPromise = mongoose.connect(uri, {
     maxPoolSize: 5,
     serverSelectionTimeoutMS: 15000,
     socketTimeoutMS: 45000,
-  })
+  });
+
+  dbConnectionPromise
     .then(() => {
       lastDbError = null;
       console.info(`[DB] Conectada: ${mongoose.connection.name}`);
