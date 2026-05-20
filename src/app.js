@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import "./server/dbConfig.js";
+import { lastDbError } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
 
 console.info("[APP] Inicializando Express...");
@@ -22,6 +22,7 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     mongodb: DB_STATES[state] ?? "unknown",
     mongoState: state,
+    lastDbError,
     env: {
       MONGODB: !!process.env.MONGODB,
       JWT_SECRET: !!process.env.JWT_SECRET,
