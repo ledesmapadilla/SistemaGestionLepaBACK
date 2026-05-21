@@ -110,13 +110,12 @@ export const obtenerRemitos = async (req, res) => {
 
     if (disponibles === "true") {
       remitos = remitos.filter((r) => {
-        const total = (r.items || []).reduce(
+        const total = Math.round((r.items || []).reduce(
           (sum, i) => sum + Number(i.cantidad) * Number(i.precioUnitario),
           0
-        );
-        const saldo = total - (r.montoFacturado || 0);
-        console.log(`[disponibles] remito=${r.remito} estado=${r.estado} total=${total} montoFacturado=${r.montoFacturado} saldo=${saldo}`);
-        return saldo > 0;
+        ) * 100) / 100;
+        const saldo = Math.round((total - (r.montoFacturado || 0)) * 100) / 100;
+        return saldo > 0.001;
       });
     }
 
