@@ -107,11 +107,14 @@ export const obtenerRemitos = async (req, res) => {
           {
             $subtract: [
               {
-                $sum: {
-                  $map: {
-                    input: "$items",
-                    as: "i",
-                    in: { $multiply: ["$$i.cantidad", "$$i.precioUnitario"] },
+                $reduce: {
+                  input: "$items",
+                  initialValue: 0,
+                  in: {
+                    $add: [
+                      "$$value",
+                      { $multiply: ["$$this.cantidad", "$$this.precioUnitario"] },
+                    ],
                   },
                 },
               },

@@ -35,9 +35,9 @@ export const crearFactura = async (req, res) => {
         if (!remito) continue;
         const totalRemito = calcularTotalRemito(remito.items);
         const nuevoMonto = (remito.montoFacturado || 0) + Number(monto);
-        const updates = { montoFacturado: nuevoMonto };
-        if (nuevoMonto >= totalRemito) updates.estado = "Facturado";
-        await Remito.findByIdAndUpdate(remitoId, updates);
+        const $set = { montoFacturado: nuevoMonto };
+        if (nuevoMonto >= totalRemito) $set.estado = "Facturado";
+        await Remito.findByIdAndUpdate(remitoId, { $set });
       }
     } else {
       await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Facturado" });
@@ -80,9 +80,9 @@ export const eliminarFactura = async (req, res) => {
         if (!remito) continue;
         const totalRemito = calcularTotalRemito(remito.items);
         const nuevoMonto = Math.max(0, (remito.montoFacturado || 0) - Number(monto));
-        const updates = { montoFacturado: nuevoMonto };
-        if (nuevoMonto < totalRemito) updates.estado = "Sin facturar";
-        await Remito.findByIdAndUpdate(remitoId, updates);
+        const $set = { montoFacturado: nuevoMonto };
+        if (nuevoMonto < totalRemito) $set.estado = "Sin facturar";
+        await Remito.findByIdAndUpdate(remitoId, { $set });
       }
     } else {
       await Remito.updateMany({ _id: { $in: factura.remitos } }, { estado: "Sin facturar" });
