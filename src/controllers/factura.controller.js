@@ -14,15 +14,34 @@ export const obtenerFacturas = async (req, res) => {
   }
 };
 
+const calcularTotalRemito = (items = []) =>
+  items.reduce((sum, i) => sum + Number(i.cantidad) * Number(i.precioUnitario), 0);
+
 export const crearFactura = async (req, res) => {
   try {
-    const { fecha, tipoFactura, numeroFactura, cliente, remitos, total } = req.body;
+    const { fecha, tipoFactura, numeroFactura, cliente, remitos, total, montosPorRemito } = req.body;
 
-    const nuevaFactura = new Factura({ fecha, tipoFactura, numeroFactura, cliente, remitos, total });
+    const nuevaFactura = new Factura({
+      fecha, tipoFactura, numeroFactura, cliente, remitos, total,
+      montosPorRemito: montosPorRemito || [],
+    });
     await nuevaFactura.save();
 
-    const nuevoEstado = tipoFactura === "Nota de Crédito" ? "Sin facturar" : "Facturado";
-    await Remito.updateMany({ _id: { $in: remitos } }, { estado: nuevoEstado });
+    if (tipoFactura === "Nota de Crédito") {
+      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Sin facturar" });
+    } else if (montosPorRemito && montosPorRemito.length > 0) {
+      for (const { remitoId, monto } of montosPorRemito) {
+        const remito = await Remito.findById(remitoId);
+        if (!remito) continue;
+        const totalRemito = calcularTotalRemito(remito.items);
+        const nuevoMonto = (remito.montoFacturado || 0) + Number(monto);
+        const updates = { montoFacturado: nuevoMonto };
+        if (nuevoMonto >= totalRemito) updates.estado = "Facturado";
+        await Remito.findByIdAndUpdate(remitoId, updates);
+      }
+    } else {
+      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Facturado" });
+    }
 
     res.status(201).json({ msg: "Factura creada correctamente", factura: nuevaFactura });
   } catch (error) {
@@ -55,7 +74,19 @@ export const eliminarFactura = async (req, res) => {
       return res.status(404).json({ msg: "Factura no encontrada" });
     }
 
-    await Remito.updateMany({ _id: { $in: factura.remitos } }, { estado: "Sin facturar" });
+    if (factura.montosPorRemito && factura.montosPorRemito.length > 0) {
+      for (const { remitoId, monto } of factura.montosPorRemito) {
+        const remito = await Remito.findById(remitoId);
+        if (!remito) continue;
+        const totalRemito = calcularTotalRemito(remito.items);
+        const nuevoMonto = Math.max(0, (remito.montoFacturado || 0) - Number(monto));
+        const updates = { montoFacturado: nuevoMonto };
+        if (nuevoMonto < totalRemito) updates.estado = "Sin facturar";
+        await Remito.findByIdAndUpdate(remitoId, updates);
+      }
+    } else {
+      await Remito.updateMany({ _id: { $in: factura.remitos } }, { estado: "Sin facturar" });
+    }
 
     await Factura.findByIdAndDelete(req.params.id);
     res.status(200).json({ msg: "Factura eliminada correctamente" });

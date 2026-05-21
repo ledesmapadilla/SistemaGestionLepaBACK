@@ -17,6 +17,12 @@ const facturaSchema = new mongoose.Schema(
       enum: ["Pendiente", "Pagada"],
       default: "Pendiente",
     },
+    montosPorRemito: [
+      {
+        remitoId: { type: mongoose.Schema.Types.ObjectId, ref: "Remito" },
+        monto: { type: Number, default: 0 },
+      },
+    ],
   },
   { timestamps: true }
 );

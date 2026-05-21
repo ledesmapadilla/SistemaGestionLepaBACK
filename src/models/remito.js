@@ -44,6 +44,10 @@ const remitoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    montoFacturado: {
+      type: Number,
+      default: 0,
+    },
     items: [itemSchema],
   },
   { timestamps: true }
