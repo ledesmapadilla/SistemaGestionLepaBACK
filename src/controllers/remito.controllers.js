@@ -99,38 +99,24 @@ export const obtenerRemitos = async (req, res) => {
     if (obra) filtros.obra = obra;
 
     if (disponibles === "true") {
-      // Remitos facturables: excluye "Obra propia" y devuelve solo los que
-      // tienen (sum(items.cantidad * items.precioUnitario) - montoFacturado) > 0
       filtros.estado = { $ne: "Obra propia" };
-      filtros.$expr = {
-        $gt: [
-          {
-            $subtract: [
-              {
-                $reduce: {
-                  input: "$items",
-                  initialValue: 0,
-                  in: {
-                    $add: [
-                      "$$value",
-                      { $multiply: ["$$this.cantidad", "$$this.precioUnitario"] },
-                    ],
-                  },
-                },
-              },
-              { $ifNull: ["$montoFacturado", 0] },
-            ],
-          },
-          0,
-        ],
-      };
     } else if (estado) {
       filtros.estado = { $regex: `^${estado}$`, $options: "i" };
     }
 
-    const remitos = await Remito.find(filtros)
+    let remitos = await Remito.find(filtros)
       .populate("obra")
       .sort({ createdAt: -1 });
+
+    if (disponibles === "true") {
+      remitos = remitos.filter((r) => {
+        const total = (r.items || []).reduce(
+          (sum, i) => sum + Number(i.cantidad) * Number(i.precioUnitario),
+          0
+        );
+        return total - (r.montoFacturado || 0) > 0;
+      });
+    }
 
     const remitosSeguros = remitos.map((r) => ({
       ...r.toObject(),
