@@ -76,18 +76,23 @@ export const eliminarFactura = async (req, res) => {
       return res.status(404).json({ msg: "Factura no encontrada" });
     }
 
-    if (factura.montosPorRemito && factura.montosPorRemito.length > 0) {
-      for (const { remitoId, monto } of factura.montosPorRemito) {
-        const remito = await Remito.findById(remitoId);
-        if (!remito) continue;
-        const totalRemito = Math.round(calcularTotalRemito(remito.items) * 100) / 100;
-        const nuevoMonto = Math.max(0, Math.round(((remito.montoFacturado || 0) - Number(monto)) * 100) / 100);
-        const $set = { montoFacturado: nuevoMonto };
-        if (nuevoMonto < totalRemito) $set.estado = "Sin facturar";
-        await Remito.findByIdAndUpdate(remitoId, { $set });
-      }
-    } else {
-      await Remito.updateMany({ _id: { $in: factura.remitos } }, { estado: "Sin facturar" });
+    for (const remitoRef of factura.remitos) {
+      const remito = await Remito.findById(remitoRef);
+      if (!remito) continue;
+
+      const entrada = (factura.montosPorRemito || []).find(
+        (m) => m.remitoId?.toString() === remitoRef?.toString()
+      );
+      const monto = entrada ? Number(entrada.monto) : 0;
+
+      const totalRemito = Math.round(calcularTotalRemito(remito.items) * 100) / 100;
+      const nuevoMonto = Math.max(0, Math.round(((remito.montoFacturado || 0) - monto) * 100) / 100);
+
+      const $set = {
+        montoFacturado: nuevoMonto,
+        estado: nuevoMonto >= totalRemito ? "Facturado" : "Sin facturar",
+      };
+      await Remito.findByIdAndUpdate(remitoRef, { $set });
     }
 
     await Factura.findByIdAndDelete(req.params.id);
