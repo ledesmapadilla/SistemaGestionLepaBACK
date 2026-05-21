@@ -114,7 +114,9 @@ export const obtenerRemitos = async (req, res) => {
           (sum, i) => sum + Number(i.cantidad) * Number(i.precioUnitario),
           0
         );
-        return total - (r.montoFacturado || 0) > 0;
+        const saldo = total - (r.montoFacturado || 0);
+        console.log(`[disponibles] remito=${r.remito} estado=${r.estado} total=${total} montoFacturado=${r.montoFacturado} saldo=${saldo}`);
+        return saldo > 0;
       });
     }
 
