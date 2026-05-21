@@ -89,20 +89,46 @@ export const eliminarItemRemito = async (req, res) => {
 
 /*
 | GET /remitos?obra=ID&estado=xxx
+| GET /remitos?disponibles=true  → remitos con saldo pendiente para facturación
 */
 export const obtenerRemitos = async (req, res) => {
   try {
-    const { obra, estado } = req.query;
+    const { obra, estado, disponibles } = req.query;
 
     const filtros = {};
     if (obra) filtros.obra = obra;
-    if (estado) filtros.estado = { $regex: `^${estado}$`, $options: "i" };
+
+    if (disponibles === "true") {
+      // Remitos facturables: excluye "Obra propia" y devuelve solo los que
+      // tienen (sum(items.cantidad * items.precioUnitario) - montoFacturado) > 0
+      filtros.estado = { $ne: "Obra propia" };
+      filtros.$expr = {
+        $gt: [
+          {
+            $subtract: [
+              {
+                $sum: {
+                  $map: {
+                    input: "$items",
+                    as: "i",
+                    in: { $multiply: ["$$i.cantidad", "$$i.precioUnitario"] },
+                  },
+                },
+              },
+              { $ifNull: ["$montoFacturado", 0] },
+            ],
+          },
+          0,
+        ],
+      };
+    } else if (estado) {
+      filtros.estado = { $regex: `^${estado}$`, $options: "i" };
+    }
 
     const remitos = await Remito.find(filtros)
       .populate("obra")
       .sort({ createdAt: -1 });
 
-    //  Blindaje
     const remitosSeguros = remitos.map((r) => ({
       ...r.toObject(),
       items: r.items || [],
