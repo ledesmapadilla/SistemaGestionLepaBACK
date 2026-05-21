@@ -80,6 +80,27 @@ export const editarObra = async (req, res) => {
       return res.status(404).json({ message: "Obra no encontrada" });
     }
 
+    if (obraActualizada.modalidad === "Precio cerrado" && req.body.precio) {
+      const filaPrecioCerrado = req.body.precio.find(
+        (p) => p.clasificacion === "Precio cerrado"
+      );
+      if (filaPrecioCerrado && !isNaN(Number(filaPrecioCerrado.precio))) {
+        const nuevoPrecio = Number(filaPrecioCerrado.precio);
+        const remito = await Remito.findOne({
+          obra: id,
+          "items.servicio": "Precio de la obra",
+        });
+        if (remito) {
+          remito.items.forEach((item) => {
+            if (item.servicio === "Precio de la obra") {
+              item.precioUnitario = nuevoPrecio;
+            }
+          });
+          await remito.save();
+        }
+      }
+    }
+
     res.json(obraActualizada);
   } catch (error) {
     console.error(error);
