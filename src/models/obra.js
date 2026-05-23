@@ -53,6 +53,10 @@ const obraSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    saldoAnalisis: {
+      type: Number,
+      default: null,
+    },
   },
   { timestamps: true }
 );
