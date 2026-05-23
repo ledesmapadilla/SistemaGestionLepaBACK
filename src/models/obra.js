@@ -49,6 +49,10 @@ const obraSchema = new mongoose.Schema(
       enum: ["Precio cerrado", "Alquiler", ""],
       default: "",
     },
+    comentariosAnalisis: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
