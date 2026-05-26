@@ -21,6 +21,7 @@ import tableroRoutes from "./tablero.routes.js";
 import facturasProveedoresRoutes from "./facturaProveedor.routes.js";
 import pagosProveedoresRoutes from "./pagoProveedor.routes.js";
 import cuentaCorrienteProveedorRoutes from "./cuentaCorrienteProveedor.routes.js";
+import bateriasRoutes from "./bateria.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -53,5 +54,6 @@ router.use("/tablero", tableroRoutes);
 router.use("/facturas-proveedores", facturasProveedoresRoutes);
 router.use("/pagos-proveedores", pagosProveedoresRoutes);
 router.use("/cuenta-corriente-proveedores", cuentaCorrienteProveedorRoutes);
+router.use("/baterias", bateriasRoutes);
 
 export default router;
