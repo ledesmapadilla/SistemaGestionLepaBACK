@@ -4,7 +4,7 @@ const medioPagoSchema = new mongoose.Schema(
   {
     medioPago: {
       type: String,
-      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia"],
+      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia", "Canje"],
     },
     monto: { type: Number },
     numeroCheque: { type: String, default: "" },
@@ -29,7 +29,7 @@ const pagoSchema = new mongoose.Schema(
     montoCobrado: { type: Number, required: true },
     medioPago: {
       type: String,
-      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia"],
+      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia", "Canje"],
     },
     observaciones: { type: String, default: "" },
   },
