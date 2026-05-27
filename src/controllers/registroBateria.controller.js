@@ -1,4 +1,6 @@
 import RegistroBateria from "../models/registroBateria.js";
+import "../models/bateria.js";   // registrar modelo para populate
+import "../models/maquina.js";   // registrar modelo para populate
 
 export const crearRegistro = async (req, res) => {
   try {
