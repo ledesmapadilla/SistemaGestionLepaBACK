@@ -6,10 +6,7 @@ export const crearRegistro = async (req, res) => {
   try {
     const nuevo = new RegistroBateria(req.body);
     await nuevo.save();
-    const populado = await RegistroBateria.findById(nuevo._id)
-      .populate("bateria", "nombreBateria marca")
-      .populate("maquina", "maquina");
-    res.status(201).json({ msg: "Registro creado correctamente", registro: populado });
+    res.status(201).json({ msg: "Registro creado correctamente", registro: nuevo });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al crear registro de batería", error: error.message });
