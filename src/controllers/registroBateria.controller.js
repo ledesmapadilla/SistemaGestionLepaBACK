@@ -9,9 +9,6 @@ export const crearRegistro = async (req, res) => {
       .populate("maquina", "maquina");
     res.status(201).json({ msg: "Registro creado correctamente", registro: populado });
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({ msg: "Esa batería ya está registrada en la tabla." });
-    }
     console.error(error);
     res.status(500).json({ msg: "Error al crear registro de batería" });
   }
