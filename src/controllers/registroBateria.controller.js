@@ -12,7 +12,7 @@ export const crearRegistro = async (req, res) => {
     res.status(201).json({ msg: "Registro creado correctamente", registro: populado });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: "Error al crear registro de batería" });
+    res.status(500).json({ msg: "Error al crear registro de batería", error: error.message });
   }
 };
 
