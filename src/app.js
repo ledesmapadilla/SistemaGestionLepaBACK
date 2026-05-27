@@ -4,6 +4,15 @@ import morgan from "morgan";
 import mongoose from "mongoose";
 import { lastDbError, getDbConnection } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
+import RegistroBateria from "./models/registroBateria.js";
+
+// Cuando la DB conecte, sincronizar índices para eliminar índices obsoletos
+// (ej.: bateria_1 unique que quedó de una versión anterior del schema)
+mongoose.connection.once("open", () => {
+  RegistroBateria.syncIndexes()
+    .then(() => console.info("[APP] RegistroBateria.syncIndexes() OK — índices stale eliminados"))
+    .catch((e) => console.warn("[APP] syncIndexes warning:", e.message));
+});
 
 console.info("[APP] Inicializando Express...");
 
