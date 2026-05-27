@@ -4,12 +4,18 @@ import "../models/maquina.js";   // registrar modelo para populate
 
 export const crearRegistro = async (req, res) => {
   try {
+    console.log("[crearRegistro] body recibido:", JSON.stringify(req.body));
     const nuevo = new RegistroBateria(req.body);
     await nuevo.save();
     res.status(201).json({ msg: "Registro creado correctamente", registro: nuevo });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: "Error al crear registro de batería", error: error.message });
+    console.error("[crearRegistro] ERROR:", error.name, error.message, error.stack);
+    res.status(500).json({
+      msg: "Error al crear registro de batería",
+      error: error.message,
+      name: error.name,
+      kind: error.kind || null,
+    });
   }
 };
 
