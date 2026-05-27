@@ -6,6 +6,9 @@ export const crearBateria = async (req, res) => {
     await nueva.save();
     res.status(201).json({ msg: "Batería creada correctamente", bateria: nueva });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ msg: "Ya existe una batería con ese nombre." });
+    }
     console.error(error);
     res.status(500).json({ msg: "Error al crear batería" });
   }
