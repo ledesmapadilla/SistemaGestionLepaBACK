@@ -4,6 +4,7 @@ const registroBateriaSchema = new mongoose.Schema(
   {
     bateria:       { type: mongoose.Schema.Types.ObjectId, ref: "Bateria", required: true },
     maquina:       { type: mongoose.Schema.Types.ObjectId, ref: "Maquina", required: true },
+    fecha:         { type: String, default: "" },
     observaciones: { type: String, default: "" },
   },
   { timestamps: true }
