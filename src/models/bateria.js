@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 const bateriaSchema = new mongoose.Schema(
   {
     nombreBateria: { type: String, required: true },
-    maquina: { type: mongoose.Schema.Types.ObjectId, ref: "Maquina", required: true },
-    observaciones: { type: String, default: "" },
+    marca:         { type: String, required: true },
+    fecha:         { type: String, required: true },
   },
   { timestamps: true }
 );
