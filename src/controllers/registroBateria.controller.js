@@ -7,7 +7,10 @@ export const crearRegistro = async (req, res) => {
     console.log("[crearRegistro] body recibido:", JSON.stringify(req.body));
     const nuevo = new RegistroBateria(req.body);
     await nuevo.save();
-    res.status(201).json({ msg: "Registro creado correctamente", registro: nuevo });
+    const populado = await RegistroBateria.findById(nuevo._id)
+      .populate("bateria", "nombreBateria marca")
+      .populate("maquina", "maquina");
+    res.status(201).json({ msg: "Registro creado correctamente", registro: populado });
   } catch (error) {
     console.error("[crearRegistro] ERROR:", error.name, error.message, error.stack);
     res.status(500).json({
