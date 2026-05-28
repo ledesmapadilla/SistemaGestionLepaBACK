@@ -31,6 +31,14 @@ const maquinaSchema = new mongoose.Schema(
     patente: {
       type: String,
     },
+    vendida: {
+      type: Boolean,
+      default: false,
+    },
+    enGalpon: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
