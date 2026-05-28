@@ -5,6 +5,9 @@ import "../models/maquina.js";   // registrar modelo para populate
 export const crearRegistro = async (req, res) => {
   try {
     console.log("[crearRegistro] body recibido:", JSON.stringify(req.body));
+    const yaExiste = await RegistroBateria.findOne({ bateria: req.body.bateria });
+    if (yaExiste) return res.status(400).json({ msg: "Esta batería ya está registrada." });
+
     const nuevo = new RegistroBateria(req.body);
     await nuevo.save();
     const populado = await RegistroBateria.findById(nuevo._id)
