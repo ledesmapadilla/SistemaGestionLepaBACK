@@ -40,13 +40,15 @@ export const editarRegistro = async (req, res) => {
 
     registro.historial.push({
       maquina:       registro.maquina,
+      maquinaLabel:  registro.maquinaLabel,
       fecha:         registro.fecha,
       observaciones: registro.observaciones,
       editadoEn:     new Date(),
     });
 
-    const { maquina, fecha, observaciones } = req.body;
-    if (maquina       !== undefined) registro.maquina       = maquina;
+    const { maquina, maquinaLabel, fecha, observaciones } = req.body;
+    if (maquina       !== undefined) registro.maquina       = maquina || null;
+    if (maquinaLabel  !== undefined) registro.maquinaLabel  = maquinaLabel;
     if (fecha         !== undefined) registro.fecha         = fecha;
     if (observaciones !== undefined) registro.observaciones = observaciones;
 
