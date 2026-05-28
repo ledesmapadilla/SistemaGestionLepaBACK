@@ -30,6 +30,9 @@ export const editarBateria = async (req, res) => {
     if (!actualizada) return res.status(404).json({ msg: "Batería no encontrada" });
     res.status(200).json({ msg: "Batería actualizada", bateria: actualizada });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ msg: "Ya existe una batería con ese nombre." });
+    }
     console.error(error);
     res.status(500).json({ msg: "Error al editar batería" });
   }
