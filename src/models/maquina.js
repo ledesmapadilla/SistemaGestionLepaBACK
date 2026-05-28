@@ -31,11 +31,6 @@ const maquinaSchema = new mongoose.Schema(
     patente: {
       type: String,
     },
-    estado: {
-      type: String,
-      enum: ["activa", "vendida", "en galpon"],
-      default: "activa",
-    },
   },
   { timestamps: true }
 );
