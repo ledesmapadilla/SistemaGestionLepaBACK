@@ -61,7 +61,6 @@ export const eliminarPersonalDeAsistencias = async (req, res) => {
       { $pull: { registros: { personal: { $regex: new RegExp(`^${nombre.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } } } }
     );
 
-    console.log(`Eliminado "${nombre}" desde ${desde}: ${result.modifiedCount} planillas modificadas`);
     res.status(200).json({ msg: `Personal eliminado de ${result.modifiedCount} planillas`, modificados: result.modifiedCount });
   } catch (error) {
     console.error("Error en eliminarPersonalDeAsistencias:", error);
