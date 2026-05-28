@@ -31,13 +31,10 @@ const maquinaSchema = new mongoose.Schema(
     patente: {
       type: String,
     },
-    vendida: {
-      type: Boolean,
-      default: false,
-    },
-    enGalpon: {
-      type: Boolean,
-      default: false,
+    estado: {
+      type: String,
+      enum: ["activa", "vendida", "en galpon"],
+      default: "activa",
     },
   },
   { timestamps: true }
