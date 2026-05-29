@@ -53,8 +53,16 @@ export const eliminarAsistencia = async (req, res) => {
 export const eliminarAsistenciaPorFecha = async (req, res) => {
   try {
     const { fecha } = req.params;
-    await Asistencia.deleteOne({ fecha });
-    res.status(200).json({ msg: "Asistencia eliminada" });
+    const [anio, mes, dia] = fecha.split("-");
+    const diaNum = parseInt(dia, 10);
+    // Acepta "2026-05-03" y "2026-05-3" (con o sin zero-padding)
+    const regex = new RegExp(`^${anio}-${mes}-0?${diaNum}$`);
+    const doc = await Asistencia.findOne({ fecha: regex });
+    if (!doc) {
+      return res.status(404).json({ msg: "No se encontró asistencia para esa fecha", fecha });
+    }
+    await Asistencia.findByIdAndDelete(doc._id);
+    res.status(200).json({ msg: "Asistencia eliminada", fecha: doc.fecha });
   } catch (error) {
     res.status(500).json({ msg: "Error al eliminar asistencia", detalle: error.message });
   }
