@@ -50,6 +50,16 @@ export const eliminarAsistencia = async (req, res) => {
   }
 };
 
+export const eliminarAsistenciaPorFecha = async (req, res) => {
+  try {
+    const { fecha } = req.params;
+    await Asistencia.deleteOne({ fecha });
+    res.status(200).json({ msg: "Asistencia eliminada" });
+  } catch (error) {
+    res.status(500).json({ msg: "Error al eliminar asistencia", detalle: error.message });
+  }
+};
+
 export const eliminarPersonalDeAsistencias = async (req, res) => {
   try {
     const { nombre, desde } = req.query;
