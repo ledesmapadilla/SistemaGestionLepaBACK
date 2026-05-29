@@ -4,9 +4,6 @@ const registroSchema = new mongoose.Schema({
   personal: { type: String },
   semanal: { type: Number, default: 0 },
   ausentismo: { type: Number, default: 0 },
-  adelanto: { type: Number, default: 0 },
-  extras: { type: Number, default: 0 },
-  otros: { type: Number, default: 0 },
   observaciones: { type: String, default: "" },
 }, { _id: false });
 
