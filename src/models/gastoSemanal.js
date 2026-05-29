@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const extraSchema = new mongoose.Schema({
   fecha: { type: String },
-  tipo: { type: String },
   descuentaAumenta: { type: String, default: "aumenta" },
   monto: { type: Number, default: 0 },
   detalle: { type: String, default: "" },
