@@ -95,7 +95,7 @@ export const loginUsuario = async (req, res) => {
     const token = jwt.sign(
       { id: usuarioDB._id, usuario: usuarioDB.usuario, rol: usuarioDB.rol },
       process.env.JWT_SECRET,
-      { expiresIn: "5h" }
+      { expiresIn: "8h" }
     );
     res.status(200).json({ ...usuarioSinPass, token });
   } catch (error) {
