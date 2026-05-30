@@ -23,6 +23,8 @@ import pagosProveedoresRoutes from "./pagoProveedor.routes.js";
 import cuentaCorrienteProveedorRoutes from "./cuentaCorrienteProveedor.routes.js";
 import bateriasRoutes from "./bateria.routes.js";
 import registroBateriaRoutes from "./registroBateria.routes.js";
+import cubiertasRoutes from "./cubierta.routes.js";
+import registroCubiertaRoutes from "./registroCubierta.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -57,5 +59,7 @@ router.use("/pagos-proveedores", pagosProveedoresRoutes);
 router.use("/cuenta-corriente-proveedores", cuentaCorrienteProveedorRoutes);
 router.use("/baterias", bateriasRoutes);
 router.use("/registro-baterias", registroBateriaRoutes);
+router.use("/cubiertas", cubiertasRoutes);
+router.use("/registro-cubiertas", registroCubiertaRoutes);
 
 export default router;
