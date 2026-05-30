@@ -45,6 +45,7 @@ export const editarRegistro = async (req, res) => {
       observaciones: registro.observaciones,
       editadoEn:     new Date(),
     });
+    registro.markModified('historial');
 
     const { maquina, maquinaLabel, fecha, observaciones } = req.body;
     if (maquina       !== undefined) registro.maquina       = maquina || null;
