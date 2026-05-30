@@ -6,6 +6,7 @@ const chequesPropioSchema = new mongoose.Schema(
     monto:        { type: Number, required: true },
     fechaCobro:   { type: String, required: true },
     proveedor:    { type: String, required: true, trim: true },
+    tipo:         { type: String, required: true },
     estado:       { type: String, default: "Emitido" },
   },
   { timestamps: true }
