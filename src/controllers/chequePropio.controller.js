@@ -6,6 +6,9 @@ export const crearChequePropio = async (req, res) => {
     await nuevo.save();
     res.status(201).json({ msg: "Cheque propio creado", cheque: nuevo });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ msg: "Ya existe un cheque con ese número." });
+    }
     console.error(error);
     res.status(500).json({ msg: "Error al crear cheque propio" });
   }
