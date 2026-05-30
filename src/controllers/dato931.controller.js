@@ -26,6 +26,27 @@ export const guardarDato931 = async (req, res) => {
   }
 };
 
+export const agregarHistorial931 = async (req, res) => {
+  try {
+    const { anio, mes, tipo, valor, fecha, observaciones } = req.body;
+    const dato = await Dato931.findOneAndUpdate(
+      { anio, mes, tipo },
+      {
+        $push: { historial: { valor, fecha, observaciones: observaciones || "" } },
+        $set:  { valor },
+      },
+      { upsert: true, new: true }
+    );
+    dato.markModified("historial");
+    await dato.save();
+    const actualizado = await Dato931.findById(dato._id);
+    res.status(200).json({ msg: "Entrada agregada", dato: actualizado });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al agregar al historial" });
+  }
+};
+
 export const eliminarDato931 = async (req, res) => {
   try {
     await Dato931.findByIdAndDelete(req.params.id);

@@ -7,6 +7,7 @@ const dato931Schema = new mongoose.Schema(
     tipo:  { type: String, required: true, trim: true },
     valor:         { type: Number, default: null },
     observaciones: { type: String, default: "" },
+    historial:     { type: [{ valor: Number, fecha: String, observaciones: String }], default: [] },
   },
   { timestamps: true }
 );
