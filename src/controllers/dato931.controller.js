@@ -3,7 +3,9 @@ import Dato931 from "../models/dato931.js";
 export const obtenerDatos931 = async (req, res) => {
   try {
     const { anio, mes } = req.query;
-    const datos = await Dato931.find({ anio: Number(anio), mes: Number(mes) });
+    const filtro = { anio: Number(anio) };
+    if (mes !== undefined) filtro.mes = Number(mes);
+    const datos = await Dato931.find(filtro);
     res.status(200).json(datos);
   } catch (error) {
     console.error(error);

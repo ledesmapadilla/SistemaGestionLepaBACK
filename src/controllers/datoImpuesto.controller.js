@@ -3,7 +3,9 @@ import DatoImpuesto from "../models/datoImpuesto.js";
 export const obtenerDatos = async (req, res) => {
   try {
     const { impuesto, anio, mes } = req.query;
-    const datos = await DatoImpuesto.find({ impuesto, anio: Number(anio), mes: Number(mes) });
+    const filtro = { impuesto, anio: Number(anio) };
+    if (mes !== undefined) filtro.mes = Number(mes);
+    const datos = await DatoImpuesto.find(filtro);
     res.status(200).json(datos);
   } catch (error) {
     console.error(error);
