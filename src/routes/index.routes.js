@@ -27,6 +27,7 @@ import cubiertasRoutes from "./cubierta.routes.js";
 import registroCubiertaRoutes from "./registroCubierta.routes.js";
 import chequesPropioRoutes from "./chequePropio.routes.js";
 import dato931Routes from "./dato931.routes.js";
+import datoImpuestoRoutes from "./datoImpuesto.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -65,5 +66,6 @@ router.use("/cubiertas", cubiertasRoutes);
 router.use("/registro-cubiertas", registroCubiertaRoutes);
 router.use("/cheques-propio", chequesPropioRoutes);
 router.use("/dato931", dato931Routes);
+router.use("/dato-impuesto", datoImpuestoRoutes);
 
 export default router;
