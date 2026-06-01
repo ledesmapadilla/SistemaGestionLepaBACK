@@ -5,11 +5,13 @@ import {
   editarRemito,
   eliminarRemito,
   eliminarItemRemito,
-  editarItemRemito
+  editarItemRemito,
+  recalcularEstados,
 } from "../controllers/remito.controllers.js";
 
 const router = Router();
 
+router.put("/recalcular-estados", recalcularEstados);
 router.get("/", obtenerRemitos);
 router.post("/", crearRemito);
 router.put("/:remitoId/items/:itemId", editarItemRemito);

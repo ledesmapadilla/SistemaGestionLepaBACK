@@ -1,5 +1,26 @@
 import Remito from "../models/remito.js";
 
+const calcTotal = (items = []) =>
+  items.reduce((s, i) => s + Number(i.cantidad) * Number(i.precioUnitario), 0);
+
+export const recalcularEstados = async (req, res) => {
+  try {
+    const remitos = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } });
+    let corregidos = 0;
+    for (const r of remitos) {
+      const total = Math.round(calcTotal(r.items) * 100) / 100;
+      if (total - (r.montoFacturado || 0) < 1) {
+        await Remito.findByIdAndUpdate(r._id, { $set: { estado: "Facturado" } });
+        corregidos++;
+      }
+    }
+    res.status(200).json({ msg: `${corregidos} remito(s) corregido(s)`, corregidos });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al recalcular estados" });
+  }
+};
+
 export const crearRemito = async (req, res) => {
   try {
     const { remito, estado, obra, fecha, items } = req.body;

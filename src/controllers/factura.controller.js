@@ -38,7 +38,7 @@ export const crearFactura = async (req, res) => {
         const montoAplicado = Math.min(Math.round(Number(monto) * 100) / 100, saldoPendiente);
         const nuevoMonto = Math.round(((remito.montoFacturado || 0) + montoAplicado) * 100) / 100;
         const $set = { montoFacturado: nuevoMonto };
-        if (nuevoMonto >= totalRemito) $set.estado = "Facturado";
+        if (totalRemito - nuevoMonto < 1) $set.estado = "Facturado";
         await Remito.findByIdAndUpdate(remitoId, { $set });
       }
     } else {
@@ -90,7 +90,7 @@ export const eliminarFactura = async (req, res) => {
 
       const $set = {
         montoFacturado: nuevoMonto,
-        estado: nuevoMonto >= totalRemito ? "Facturado" : "Sin facturar",
+        estado: totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
       };
       await Remito.findByIdAndUpdate(remitoRef, { $set });
     }
