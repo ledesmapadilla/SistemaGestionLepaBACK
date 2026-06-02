@@ -120,7 +120,7 @@ export const obtenerRemitos = async (req, res) => {
     if (obra) filtros.obra = obra;
 
     if (disponibles === "true") {
-      filtros.estado = { $ne: "Obra propia" };
+      filtros.estado = { $nin: ["Obra propia", "Facturado"] };
     } else if (estado) {
       filtros.estado = { $regex: `^${estado}$`, $options: "i" };
     }
