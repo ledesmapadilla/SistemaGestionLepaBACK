@@ -30,7 +30,8 @@ export const obtenerRegistros = async (req, res) => {
       .populate("bateria", "nombreBateria marca")
       .populate("maquina", "maquina")
       .populate("historial.maquina", "maquina")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     res.status(200).json(registros);
   } catch (error) {
     console.error(error);
