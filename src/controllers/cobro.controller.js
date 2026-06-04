@@ -67,6 +67,21 @@ export const obtenerCobros = async (req, res) => {
 export const crearCobro = async (req, res) => {
   try {
     const { fecha, cliente, medioPago, mediosPago, pagos } = req.body;
+
+    const numerosCheque = (mediosPago || [])
+      .filter((m) => (m.medioPago === "Cheque" || m.medioPago === "E-Cheq") && m.numeroCheque)
+      .map((m) => m.numeroCheque);
+
+    if (numerosCheque.length > 0) {
+      const duplicado = await Cobro.findOne({
+        mediosPago: { $elemMatch: { medioPago: { $in: ["Cheque", "E-Cheq"] }, numeroCheque: { $in: numerosCheque } } },
+      }).lean();
+      if (duplicado) {
+        const cheqDup = duplicado.mediosPago.find((m) => numerosCheque.includes(m.numeroCheque));
+        return res.status(400).json({ msg: `El cheque N° ${cheqDup.numeroCheque} ya existe en otro cobro` });
+      }
+    }
+
     const nuevoCobro = new Cobro({ fecha, cliente, medioPago, mediosPago, pagos });
     await nuevoCobro.save();
     await recalcularEstadoFacturas((pagos || []).map((p) => p.factura));
