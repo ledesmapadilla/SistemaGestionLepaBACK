@@ -23,4 +23,6 @@ const registroBateriaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+registroBateriaSchema.index({ createdAt: -1 });
+
 export default mongoose.model("RegistroBateria", registroBateriaSchema);
