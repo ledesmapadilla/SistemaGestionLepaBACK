@@ -19,16 +19,24 @@ const calcularTotalRemito = (items = []) =>
 
 export const crearFactura = async (req, res) => {
   try {
-    const { fecha, tipoFactura, numeroFactura, cliente, remitos, total, montosPorRemito } = req.body;
+    const { fecha, tipoFactura, numeroFactura, cliente, remitos, total, montosPorRemito, estadoPago, facturaAsociada } = req.body;
 
     const nuevaFactura = new Factura({
       fecha, tipoFactura, numeroFactura, cliente, remitos, total,
       montosPorRemito: montosPorRemito || [],
+      ...(estadoPago && { estadoPago }),
+      ...(facturaAsociada && { facturaAsociada }),
     });
     await nuevaFactura.save();
 
     if (tipoFactura === "Nota de Crédito") {
       await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Sin facturar" });
+      if (facturaAsociada) {
+        await Factura.findOneAndUpdate(
+          { numeroFactura: facturaAsociada },
+          { estadoPago: "Anulada" }
+        );
+      }
     } else if (montosPorRemito && montosPorRemito.length > 0) {
       for (const { remitoId, monto } of montosPorRemito) {
         const remito = await Remito.findById(remitoId);

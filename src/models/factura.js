@@ -14,7 +14,7 @@ const facturaSchema = new mongoose.Schema(
     total: { type: Number, default: 0 },
     estadoPago: {
       type: String,
-      enum: ["Pendiente", "Pagada"],
+      enum: ["Pendiente", "Pagada", "Anulada"],
       default: "Pendiente",
     },
     facturaAsociada: { type: String, default: "" },
