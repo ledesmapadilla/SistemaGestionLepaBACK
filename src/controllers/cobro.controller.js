@@ -6,24 +6,28 @@ const recalcularEstadoFacturas = async (facturaIds) => {
   const ids = [...new Set(facturaIds.map((id) => id?.toString()).filter(Boolean))];
   if (!ids.length) return;
 
-  const facturas = await Factura.find({ _id: { $in: ids } }, "_id tipoFactura total").lean();
-  const facturaMap = Object.fromEntries(facturas.map((f) => [f._id.toString(), f]));
+  const facturas = await Factura.find({ _id: { $in: ids } }, "_id tipoFactura total estadoPago").lean();
 
-  await Promise.all(
-    ids.map(async (facturaId) => {
-      const factura = facturaMap[facturaId];
-      if (!factura) return;
-      const totalConIva = factura.tipoFactura === "Factura X" ? factura.total : factura.total * 1.21;
-      const resultado = await Cobro.aggregate([
-        { $unwind: "$pagos" },
-        { $match: { "pagos.factura": new mongoose.Types.ObjectId(facturaId) } },
-        { $group: { _id: null, total: { $sum: "$pagos.montoCobrado" } } },
-      ]);
-      const totalCobrado = resultado[0]?.total || 0;
+  // Un solo aggregate para todas las facturas a la vez
+  const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+  const resultados = await Cobro.aggregate([
+    { $unwind: "$pagos" },
+    { $match: { "pagos.factura": { $in: objectIds } } },
+    { $group: { _id: "$pagos.factura", totalCobrado: { $sum: "$pagos.montoCobrado" } } },
+  ]);
+  const cobradoMap = Object.fromEntries(resultados.map((r) => [r._id.toString(), r.totalCobrado]));
+
+  // Actualizar todas las facturas en una sola operación bulkWrite
+  const bulkOps = facturas
+    .filter((f) => f.estadoPago !== "Anulada")
+    .map((f) => {
+      const totalConIva = f.tipoFactura === "Factura X" ? f.total : f.total * 1.21;
+      const totalCobrado = cobradoMap[f._id.toString()] || 0;
       const estadoPago = totalCobrado >= totalConIva - 0.01 ? "Pagada" : "Pendiente";
-      await Factura.findByIdAndUpdate(facturaId, { estadoPago });
-    })
-  );
+      return { updateOne: { filter: { _id: f._id }, update: { $set: { estadoPago } } } };
+    });
+
+  if (bulkOps.length > 0) await Factura.bulkWrite(bulkOps);
 };
 
 export const recalcularTodasLasFacturas = async (req, res) => {
@@ -45,7 +49,8 @@ export const obtenerCobros = async (req, res) => {
       cobros.flatMap((c) => (c.pagos || []).map((p) => p.factura?.toString()).filter(Boolean))
     )];
     const facturas = await Factura.find({ _id: { $in: facturaIds } })
-      .populate({ path: "remitos", populate: { path: "obra" } })
+      .select("tipoFactura total numeroFactura fecha remitos")
+      .populate({ path: "remitos", select: "obra", populate: { path: "obra", select: "nombreobra" } })
       .lean();
     const facturaMap = Object.fromEntries(facturas.map((f) => [f._id.toString(), f]));
 
