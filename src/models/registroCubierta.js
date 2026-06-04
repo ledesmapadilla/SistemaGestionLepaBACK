@@ -23,4 +23,6 @@ const registroCubiertaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+registroCubiertaSchema.index({ createdAt: -1 });
+
 export default mongoose.model("RegistroCubierta", registroCubiertaSchema);

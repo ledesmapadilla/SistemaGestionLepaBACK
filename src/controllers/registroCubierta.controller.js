@@ -22,15 +22,29 @@ export const crearRegistro = async (req, res) => {
 export const obtenerRegistros = async (req, res) => {
   try {
     const registros = await RegistroCubierta.find()
-      .populate("cubierta", "nombreCubierta marca")
+      .select("-historial")
+      .populate("cubierta", "nombreCubierta")
       .populate("maquina", "maquina")
-      .populate("historial.maquina", "maquina")
       .sort({ createdAt: -1 })
       .lean();
     res.status(200).json(registros);
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al obtener registros de cubiertas", error: error.message });
+  }
+};
+
+export const obtenerHistorial = async (req, res) => {
+  try {
+    const registro = await RegistroCubierta.findById(req.params.id)
+      .select("historial")
+      .populate("historial.maquina", "maquina")
+      .lean();
+    if (!registro) return res.status(404).json({ msg: "Registro no encontrado" });
+    res.status(200).json({ historial: registro.historial || [] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al obtener historial" });
   }
 };
 
