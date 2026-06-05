@@ -13,6 +13,9 @@ const registroSchema = new mongoose.Schema({
   ausentismo: { type: Number, default: 0 },
   extras: { type: [extraSchema], default: [] },
   observaciones: { type: String, default: "" },
+  pagado: { type: Number, default: 0 },
+  marcado: { type: Number, default: 0 },
+  seleccionado: { type: Boolean, default: false },
 }, { _id: false });
 
 const gastoSemanalSchema = new mongoose.Schema(
