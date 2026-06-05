@@ -16,7 +16,7 @@ const registroSchema = new mongoose.Schema({
   pagado: { type: Number, default: 0 },
   marcado: { type: Number, default: 0 },
   seleccionado: { type: Boolean, default: false },
-}, { _id: false });
+}, { _id: false, strict: false });
 
 const gastoSemanalSchema = new mongoose.Schema(
   {

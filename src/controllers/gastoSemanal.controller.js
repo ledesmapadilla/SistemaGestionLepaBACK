@@ -4,10 +4,10 @@ export const obtenerGastoSemanal = async (req, res) => {
   try {
     const { semana } = req.query;
     if (semana) {
-      const doc = await GastoSemanal.findOne({ semana });
+      const doc = await GastoSemanal.findOne({ semana }).lean();
       return res.status(200).json(doc || null);
     }
-    const docs = await GastoSemanal.find().sort({ semana: -1 });
+    const docs = await GastoSemanal.find().sort({ semana: -1 }).lean();
     res.status(200).json(docs);
   } catch (error) {
     res.status(500).json({ msg: "Error al obtener gastos semanales", detalle: error.message });
