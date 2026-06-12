@@ -1,5 +1,5 @@
 import RegistroBateria from "../models/registroBateria.js";
-import "../models/bateria.js";   // registrar modelo para populate
+import Bateria from "../models/bateria.js";
 import "../models/maquina.js";   // registrar modelo para populate
 
 export const crearRegistro = async (req, res) => {
@@ -91,6 +91,7 @@ export const eliminarRegistro = async (req, res) => {
   try {
     const eliminado = await RegistroBateria.findByIdAndDelete(req.params.id);
     if (!eliminado) return res.status(404).json({ msg: "Registro no encontrado" });
+    if (eliminado.bateria) await Bateria.findByIdAndDelete(eliminado.bateria);
     res.status(200).json({ msg: "Registro eliminado" });
   } catch (error) {
     console.error(error);
