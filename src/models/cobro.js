@@ -18,6 +18,7 @@ const medioPagoSchema = new mongoose.Schema(
     tasaInteres: { type: Number, default: null },
     gastosPorc: { type: Number, default: null },
     montoDescontado: { type: Number, default: null },
+    fechaCambio: { type: String, default: "" },
     observaciones: { type: String, default: "" },
   },
   { _id: false }
