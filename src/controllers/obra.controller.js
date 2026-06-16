@@ -5,13 +5,18 @@ import Remito from "../models/remito.js";
 // Busca el precio vigente para una clasificación/trabajo según la fecha de referencia.
 // Réplica de la lógica del frontend (RemitosModal.buscarPrecioVigente) para que el
 // recálculo retroactivo de remitos sea consistente con cómo se asignan los precios al crearlos.
+// Normaliza nombres de trabajo/servicio para comparar sin distinguir
+// mayúsculas ni espacios sobrantes (el servicio se escribe a mano).
+const normTrabajo = (s) => (s ?? "").toString().trim().toLowerCase();
+
 const buscarPrecioVigente = (precios, clasificacion, trabajo, fechaRef) => {
+  const trabajoNorm = normTrabajo(trabajo);
   const candidatos = precios.filter(
     (p) =>
       (clasificacion === "Alquiler"
         ? p.clasificacion?.startsWith("Alquiler")
         : p.clasificacion === clasificacion) &&
-      (!trabajo || p.trabajo === trabajo)
+      (!trabajo || normTrabajo(p.trabajo) === trabajoNorm)
   );
   if (candidatos.length === 0) return null;
   if (candidatos.length === 1) return candidatos[0];
@@ -169,11 +174,12 @@ export const editarObra = async (req, res) => {
     // vigente a la fecha de cada ítem (alquiler, servicio y precio cerrado).
     // Así, al agregar un precio nuevo con fecha X, los remitos con fecha >= X
     // toman el precio nuevo y los anteriores conservan el viejo.
+    let remitosActualizados = 0;
     if (req.body.precio) {
-      await recalcularPreciosRemitos(id, req.body.precio);
+      remitosActualizados = await recalcularPreciosRemitos(id, req.body.precio);
     }
 
-    res.json(obraActualizada);
+    res.json({ ...obraActualizada.toObject(), remitosActualizados });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
