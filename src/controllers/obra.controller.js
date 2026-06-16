@@ -2,6 +2,91 @@ import Obra from "../models/obra.js";
 import Cliente from "../models/cliente.js";
 import Remito from "../models/remito.js";
 
+// Busca el precio vigente para una clasificación/trabajo según la fecha de referencia.
+// Réplica de la lógica del frontend (RemitosModal.buscarPrecioVigente) para que el
+// recálculo retroactivo de remitos sea consistente con cómo se asignan los precios al crearlos.
+const buscarPrecioVigente = (precios, clasificacion, trabajo, fechaRef) => {
+  const candidatos = precios.filter(
+    (p) =>
+      (clasificacion === "Alquiler"
+        ? p.clasificacion?.startsWith("Alquiler")
+        : p.clasificacion === clasificacion) &&
+      (!trabajo || p.trabajo === trabajo)
+  );
+  if (candidatos.length === 0) return null;
+  if (candidatos.length === 1) return candidatos[0];
+
+  const indexados = candidatos.map((p, i) => ({ p, i }));
+  const conFecha = indexados.filter(({ p }) => p.fecha);
+
+  if (fechaRef && conFecha.length > 0) {
+    const vigentes = conFecha
+      .filter(({ p }) => new Date(p.fecha) <= new Date(fechaRef))
+      .sort((a, b) => {
+        const diff = new Date(b.p.fecha) - new Date(a.p.fecha);
+        return diff !== 0 ? diff : b.i - a.i;
+      });
+    if (vigentes.length > 0) return vigentes[0].p;
+    const masAntiguo = conFecha.sort((a, b) => {
+      const diff = new Date(a.p.fecha) - new Date(b.p.fecha);
+      return diff !== 0 ? diff : a.i - b.i;
+    });
+    return masAntiguo[0].p;
+  }
+
+  conFecha.sort((a, b) => {
+    const diff = new Date(b.p.fecha) - new Date(a.p.fecha);
+    return diff !== 0 ? diff : b.i - a.i;
+  });
+  return conFecha.length > 0 ? conFecha[0].p : candidatos[candidatos.length - 1];
+};
+
+// Mapea un ítem de remito a la clasificación/trabajo de la lista de precios de la obra.
+const itemAClasificacionTrabajo = (item) => {
+  if (item.servicio === "Precio de la obra")
+    return { clasificacion: "Precio cerrado", trabajo: "Precio de la obra" };
+  if (item.maquina) return { clasificacion: "Alquiler", trabajo: item.maquina };
+  if (item.servicio) return { clasificacion: "Servicio", trabajo: item.servicio };
+  return null;
+};
+
+// Recalcula el precioUnitario de cada ítem de cada remito de la obra según el precio
+// vigente a la fecha del ítem. Devuelve la cantidad de remitos efectivamente modificados.
+const recalcularPreciosRemitos = async (obraId, precios) => {
+  if (!Array.isArray(precios) || precios.length === 0) return 0;
+
+  const remitos = await Remito.find({ obra: obraId });
+  let remitosModificados = 0;
+
+  for (const remito of remitos) {
+    let cambio = false;
+    for (const item of remito.items) {
+      const mapa = itemAClasificacionTrabajo(item);
+      if (!mapa) continue;
+
+      const precioVigente = buscarPrecioVigente(
+        precios,
+        mapa.clasificacion,
+        mapa.trabajo,
+        item.fecha
+      );
+      if (!precioVigente) continue;
+
+      const nuevoPrecio = Number(precioVigente.precio);
+      if (!isNaN(nuevoPrecio) && nuevoPrecio !== item.precioUnitario) {
+        item.precioUnitario = nuevoPrecio;
+        cambio = true;
+      }
+    }
+    if (cambio) {
+      await remito.save();
+      remitosModificados++;
+    }
+  }
+
+  return remitosModificados;
+};
+
 // CREATE (ya la tenés)
 export const crearObra = async (req, res) => {
   try {
@@ -80,25 +165,12 @@ export const editarObra = async (req, res) => {
       return res.status(404).json({ message: "Obra no encontrada" });
     }
 
-    if (obraActualizada.modalidad === "Precio cerrado" && req.body.precio) {
-      const filaPrecioCerrado = req.body.precio.find(
-        (p) => p.clasificacion === "Precio cerrado"
-      );
-      if (filaPrecioCerrado && !isNaN(Number(filaPrecioCerrado.precio))) {
-        const nuevoPrecio = Number(filaPrecioCerrado.precio);
-        const remito = await Remito.findOne({
-          obra: id,
-          "items.servicio": "Precio de la obra",
-        });
-        if (remito) {
-          remito.items.forEach((item) => {
-            if (item.servicio === "Precio de la obra") {
-              item.precioUnitario = nuevoPrecio;
-            }
-          });
-          await remito.save();
-        }
-      }
+    // Recalcula los precios de TODOS los remitos de la obra según el precio
+    // vigente a la fecha de cada ítem (alquiler, servicio y precio cerrado).
+    // Así, al agregar un precio nuevo con fecha X, los remitos con fecha >= X
+    // toman el precio nuevo y los anteriores conservan el viejo.
+    if (req.body.precio) {
+      await recalcularPreciosRemitos(id, req.body.precio);
     }
 
     res.json(obraActualizada);
