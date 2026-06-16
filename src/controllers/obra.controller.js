@@ -32,11 +32,14 @@ const buscarPrecioVigente = (precios, clasificacion, trabajo, fechaRef) => {
         return diff !== 0 ? diff : b.i - a.i;
       });
     if (vigentes.length > 0) return vigentes[0].p;
-    const masAntiguo = conFecha.sort((a, b) => {
-      const diff = new Date(a.p.fecha) - new Date(b.p.fecha);
-      return diff !== 0 ? diff : a.i - b.i;
+    // Si el remito es anterior a todos los precios cargados, usar el más
+    // reciente (el precio actual), no el más viejo. Así, al corregir un
+    // precio, los remitos viejos también toman el valor nuevo.
+    const masReciente = conFecha.sort((a, b) => {
+      const diff = new Date(b.p.fecha) - new Date(a.p.fecha);
+      return diff !== 0 ? diff : b.i - a.i;
     });
-    return masAntiguo[0].p;
+    return masReciente[0].p;
   }
 
   conFecha.sort((a, b) => {
