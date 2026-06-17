@@ -16,14 +16,20 @@ export const obtenerGastoSemanal = async (req, res) => {
 
 export const guardarGastoSemanal = async (req, res) => {
   try {
-    const { semana, registros } = req.body;
+    const { semana, registros, proveedores } = req.body;
     let doc = await GastoSemanal.findOne({ semana });
     if (doc) {
-      doc.registros = registros;
-      doc.markModified("registros");
+      if (registros !== undefined) {
+        doc.registros = registros;
+        doc.markModified("registros");
+      }
+      if (proveedores !== undefined) {
+        doc.proveedores = proveedores;
+        doc.markModified("proveedores");
+      }
       await doc.save();
     } else {
-      doc = new GastoSemanal({ semana, registros });
+      doc = new GastoSemanal({ semana, registros: registros || [], proveedores: proveedores || [] });
       await doc.save();
     }
     res.status(200).json({ msg: "Gasto semanal guardado", data: doc });

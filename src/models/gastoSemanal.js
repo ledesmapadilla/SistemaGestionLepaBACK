@@ -18,10 +18,19 @@ const registroSchema = new mongoose.Schema({
   seleccionado: { type: Boolean, default: false },
 }, { _id: false, strict: false });
 
+const proveedorSchema = new mongoose.Schema({
+  proveedor: { type: String, default: "" },
+  deuda: { type: Number, default: 0 },
+  pago: { type: Number, default: 0 },
+  observaciones: { type: String, default: "" },
+  libre: { type: Boolean, default: false },
+}, { _id: false, strict: false });
+
 const gastoSemanalSchema = new mongoose.Schema(
   {
     semana: { type: String, required: true, unique: true },
     registros: [registroSchema],
+    proveedores: { type: [proveedorSchema], default: [] },
   },
   { timestamps: true }
 );
