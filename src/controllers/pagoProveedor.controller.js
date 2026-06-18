@@ -87,32 +87,38 @@ export const crearPagoEfectivoProveedor = async (req, res) => {
     const pagadoPorFactura = {};
     pagosPrevios.forEach((p) => { if (p._id) pagadoPorFactura[p._id.toString()] = p.total; });
 
-    // Imputación FIFO (facturas más viejas primero)
+    // Facturas con saldo pendiente (más viejas primero)
+    const facturasPend = facturas
+      .map((f) => ({ id: f._id, pendiente: totalFactura(f) - (pagadoPorFactura[f._id.toString()] || 0) }))
+      .filter((x) => x.pendiente > 0.01);
+
+    if (facturasPend.length === 0) {
+      return res.status(400).json({ msg: "El proveedor no tiene deuda pendiente para imputar el pago" });
+    }
+
+    // Imputación FIFO con redondeo de hasta $1: si lo que queda de una factura
+    // es menor o igual a $1, se salda completa (no quedan saldos de centavos).
     let restante = montoNum;
     const asignaciones = [];
-    for (const f of facturas) {
+    for (const x of facturasPend) {
       if (restante <= 0.01) break;
-      const pendiente = totalFactura(f) - (pagadoPorFactura[f._id.toString()] || 0);
-      if (pendiente <= 0.01) continue;
-      const aplicar = Math.min(restante, pendiente);
-      asignaciones.push({ factura: f._id, montoPagado: aplicar });
+      let aplicar = Math.min(restante, x.pendiente);
+      if (x.pendiente - aplicar <= 1) aplicar = x.pendiente;
+      asignaciones.push({ factura: x.id, montoPagado: aplicar });
       restante -= aplicar;
     }
-    // Sobrante: se suma a la última factura para que el crédito sea igual al monto
-    if (restante > 0.01) {
-      if (asignaciones.length > 0) {
-        asignaciones[asignaciones.length - 1].montoPagado += restante;
-      } else if (facturas.length > 0) {
-        asignaciones.push({ factura: facturas[facturas.length - 1]._id, montoPagado: restante });
-      } else {
-        return res.status(400).json({ msg: "El proveedor no tiene facturas para imputar el pago" });
-      }
+    // Excedente real (> $1) se imputa a la última factura; un sobrante menor
+    // (diferencia de centavos por el redondeo del monto) se descarta.
+    if (restante > 1) {
+      asignaciones[asignaciones.length - 1].montoPagado += restante;
     }
+
+    const totalImputado = asignaciones.reduce((s, a) => s + a.montoPagado, 0);
 
     const nuevoPago = new PagoProveedor({
       fecha: fecha || new Date().toLocaleDateString("en-CA"),
       proveedor,
-      mediosPago: [{ medioPago: "Efectivo gastos semanal", monto: montoNum }],
+      mediosPago: [{ medioPago: "Efectivo gastos semanal", monto: totalImputado }],
       pagos: asignaciones,
     });
     await nuevoPago.save();
