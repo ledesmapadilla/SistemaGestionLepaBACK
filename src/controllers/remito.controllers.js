@@ -153,6 +153,43 @@ export const obtenerRemitos = async (req, res) => {
 };
 
 /*
+| GET /remitos/existe/:numero → { existe: bool }
+| Chequeo liviano de número de remito ya usado (sin bajar toda la colección).
+*/
+export const existeRemito = async (req, res) => {
+  try {
+    const numero = Number(req.params.numero);
+    if (!Number.isFinite(numero)) {
+      return res.status(400).json({ msg: "Número de remito inválido" });
+    }
+    const existe = await Remito.exists({ remito: numero });
+    res.status(200).json({ existe: !!existe });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al verificar remito" });
+  }
+};
+
+/*
+| GET /remitos/proximo-numero?desde=9000 → { numero }
+| Devuelve el próximo número libre >= desde (para remitos automáticos de obra
+| propia). Solo trae los números >= desde, no toda la colección.
+*/
+export const proximoNumeroRemito = async (req, res) => {
+  try {
+    const desde = Number(req.query.desde) || 9000;
+    const usados = await Remito.find({ remito: { $gte: desde } }, { remito: 1, _id: 0 }).lean();
+    const set = new Set(usados.map((r) => r.remito));
+    let numero = desde;
+    while (set.has(numero)) numero++;
+    res.status(200).json({ numero });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al calcular próximo número de remito" });
+  }
+};
+
+/*
 | PUT /remitos/:id
 */
 export const editarRemito = async (req, res) => {
