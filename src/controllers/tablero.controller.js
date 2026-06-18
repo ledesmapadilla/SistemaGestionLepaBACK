@@ -8,6 +8,14 @@ const EXCLUIDAS = [
   "batea 1", "batea 2",
 ];
 
+// La fecha de los services puede venir como Date o como string "YYYY-MM-DD"
+// según cómo se haya cargado. Normalizamos a "YYYY-MM-DD" sin romper.
+const aFechaISO = (f) => {
+  if (!f) return null;
+  if (f instanceof Date) return f.toISOString().slice(0, 10);
+  return String(f).slice(0, 10);
+};
+
 export const obtenerTablero = async (req, res) => {
   try {
     const [maquinas, services, maxPorMaquina] = await Promise.all([
@@ -55,14 +63,14 @@ export const obtenerTablero = async (req, res) => {
       if (maxSvc && maxAst) {
         if (Number(maxSvc.horometro) >= maxAst.horometro) {
           horometroActual = Number(maxSvc.horometro);
-          fechaUltimoRegistro = maxSvc.fecha ? maxSvc.fecha.toISOString().slice(0, 10) : null;
+          fechaUltimoRegistro = aFechaISO(maxSvc.fecha);
         } else {
           horometroActual = maxAst.horometro;
           fechaUltimoRegistro = maxAst.fecha;
         }
       } else if (maxSvc) {
         horometroActual = Number(maxSvc.horometro);
-        fechaUltimoRegistro = maxSvc.fecha ? maxSvc.fecha.toISOString().slice(0, 10) : null;
+        fechaUltimoRegistro = aFechaISO(maxSvc.fecha);
       } else if (maxAst) {
         horometroActual = maxAst.horometro;
         fechaUltimoRegistro = maxAst.fecha;
@@ -74,9 +82,7 @@ export const obtenerTablero = async (req, res) => {
         .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       const ultimoService = servicesEsta[0] || null;
 
-      const fechaUltimoService = ultimoService?.fecha
-        ? ultimoService.fecha.toISOString().slice(0, 10)
-        : null;
+      const fechaUltimoService = aFechaISO(ultimoService?.fecha);
       const horometroUltimoService = ultimoService?.horometro != null
         ? Number(ultimoService.horometro)
         : null;
