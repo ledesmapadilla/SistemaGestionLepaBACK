@@ -65,8 +65,8 @@ export const obtenerPagosProveedores = async (req, res) => {
 
 export const crearPagoProveedor = async (req, res) => {
   try {
-    const { fecha, proveedor, mediosPago, pagos } = req.body;
-    const nuevoPago = new PagoProveedor({ fecha, proveedor, mediosPago, pagos });
+    const { fecha, proveedor, observaciones, mediosPago, pagos } = req.body;
+    const nuevoPago = new PagoProveedor({ fecha, proveedor, observaciones, mediosPago, pagos });
     await nuevoPago.save();
     await recalcularEstados((pagos || []).map((p) => p.factura));
     res.status(201).json({ msg: "Pago registrado correctamente", pago: nuevoPago });

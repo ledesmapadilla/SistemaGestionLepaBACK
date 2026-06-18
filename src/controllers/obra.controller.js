@@ -67,6 +67,12 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
   let remitosModificados = 0;
 
   for (const remito of remitos) {
+    // No tocar remitos ya facturados (total o parcial): una factura emitida no
+    // debe cambiar sola. Las correcciones de precio sobre lo ya facturado se
+    // hacen con Nota de Crédito/Débito.
+    if (remito.estado === "Facturado" || (remito.montoFacturado || 0) > 0)
+      continue;
+
     let cambio = false;
     for (const item of remito.items) {
       const mapa = itemAClasificacionTrabajo(item);

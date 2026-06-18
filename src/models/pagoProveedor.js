@@ -25,6 +25,7 @@ const pagoProveedorSchema = new mongoose.Schema(
   {
     fecha: { type: String, required: true },
     proveedor: { type: String, required: true },
+    observaciones: { type: String, default: "" },
     mediosPago: [medioPagoSchema],
     pagos: [pagoItemSchema],
   },
