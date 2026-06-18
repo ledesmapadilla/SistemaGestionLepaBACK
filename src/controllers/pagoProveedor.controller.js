@@ -112,7 +112,7 @@ export const crearPagoEfectivoProveedor = async (req, res) => {
     const nuevoPago = new PagoProveedor({
       fecha: fecha || new Date().toLocaleDateString("en-CA"),
       proveedor,
-      mediosPago: [{ medioPago: "Efectivo", monto: montoNum }],
+      mediosPago: [{ medioPago: "Efectivo gastos semanal", monto: montoNum }],
       pagos: asignaciones,
     });
     await nuevoPago.save();
