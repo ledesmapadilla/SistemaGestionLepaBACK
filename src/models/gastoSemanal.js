@@ -25,6 +25,7 @@ const proveedorSchema = new mongoose.Schema({
   observaciones: { type: String, default: "" },
   libre: { type: Boolean, default: false },
   marcado: { type: Number, default: 0 },
+  pagoId: { type: String, default: "" },
 }, { _id: false, strict: false });
 
 const gastoSemanalSchema = new mongoose.Schema(

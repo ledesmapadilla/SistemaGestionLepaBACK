@@ -65,6 +65,65 @@ export const crearPagoProveedor = async (req, res) => {
   }
 };
 
+export const crearPagoEfectivoProveedor = async (req, res) => {
+  try {
+    const { proveedor, monto, fecha } = req.body;
+    const montoNum = Number(monto) || 0;
+    if (!proveedor || montoNum <= 0) {
+      return res.status(400).json({ msg: "Proveedor y monto válido son requeridos" });
+    }
+
+    // Facturas del proveedor que generan deuda (excluye notas de crédito)
+    const facturas = await FacturaProveedor.find({
+      proveedor,
+      tipoFactura: { $ne: "Nota de Crédito" },
+    }).sort({ fecha: 1 });
+
+    // Pagos ya imputados por factura
+    const pagosPrevios = await PagoProveedor.aggregate([
+      { $unwind: "$pagos" },
+      { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
+    ]);
+    const pagadoPorFactura = {};
+    pagosPrevios.forEach((p) => { if (p._id) pagadoPorFactura[p._id.toString()] = p.total; });
+
+    // Imputación FIFO (facturas más viejas primero)
+    let restante = montoNum;
+    const asignaciones = [];
+    for (const f of facturas) {
+      if (restante <= 0.01) break;
+      const pendiente = totalFactura(f) - (pagadoPorFactura[f._id.toString()] || 0);
+      if (pendiente <= 0.01) continue;
+      const aplicar = Math.min(restante, pendiente);
+      asignaciones.push({ factura: f._id, montoPagado: aplicar });
+      restante -= aplicar;
+    }
+    // Sobrante: se suma a la última factura para que el crédito sea igual al monto
+    if (restante > 0.01) {
+      if (asignaciones.length > 0) {
+        asignaciones[asignaciones.length - 1].montoPagado += restante;
+      } else if (facturas.length > 0) {
+        asignaciones.push({ factura: facturas[facturas.length - 1]._id, montoPagado: restante });
+      } else {
+        return res.status(400).json({ msg: "El proveedor no tiene facturas para imputar el pago" });
+      }
+    }
+
+    const nuevoPago = new PagoProveedor({
+      fecha: fecha || new Date().toLocaleDateString("en-CA"),
+      proveedor,
+      mediosPago: [{ medioPago: "Efectivo", monto: montoNum }],
+      pagos: asignaciones,
+    });
+    await nuevoPago.save();
+    await recalcularEstados(asignaciones.map((a) => a.factura));
+    res.status(201).json({ msg: "Pago en efectivo registrado", pago: nuevoPago });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al registrar pago en efectivo", detalle: error.message });
+  }
+};
+
 export const editarPagoProveedor = async (req, res) => {
   try {
     const pagoAnterior = await PagoProveedor.findById(req.params.id);
