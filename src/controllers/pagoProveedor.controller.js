@@ -7,19 +7,30 @@ const totalFactura = (f) =>
 
 const recalcularEstados = async (facturaIds) => {
   const ids = [...new Set(facturaIds.map((id) => id?.toString()).filter(Boolean))];
-  for (const facturaId of ids) {
-    const factura = await FacturaProveedor.findById(facturaId);
-    if (!factura) continue;
-    const totalAPagar = totalFactura(factura);
-    const resultado = await PagoProveedor.aggregate([
+  if (ids.length === 0) return;
+
+  const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
+  // Una sola consulta para traer las facturas y otra para sumar lo pagado por factura
+  const [facturas, pagados] = await Promise.all([
+    FacturaProveedor.find({ _id: { $in: objectIds } }),
+    PagoProveedor.aggregate([
       { $unwind: "$pagos" },
-      { $match: { "pagos.factura": new mongoose.Types.ObjectId(facturaId) } },
-      { $group: { _id: null, total: { $sum: "$pagos.montoPagado" } } },
-    ]);
-    const totalPagado = resultado[0]?.total || 0;
-    const estadoPago = totalPagado >= totalAPagar - 0.01 ? "Pagada" : "Pendiente";
-    await FacturaProveedor.findByIdAndUpdate(facturaId, { estadoPago });
-  }
+      { $match: { "pagos.factura": { $in: objectIds } } },
+      { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
+    ]),
+  ]);
+
+  const pagadoPorFactura = {};
+  pagados.forEach((p) => { if (p._id) pagadoPorFactura[p._id.toString()] = p.total; });
+
+  await Promise.all(
+    facturas.map((factura) => {
+      const totalPagado = pagadoPorFactura[factura._id.toString()] || 0;
+      const estadoPago = totalPagado >= totalFactura(factura) - 0.01 ? "Pagada" : "Pendiente";
+      return FacturaProveedor.updateOne({ _id: factura._id }, { estadoPago });
+    })
+  );
 };
 
 export const obtenerPagosProveedores = async (req, res) => {
@@ -79,8 +90,9 @@ export const crearPagoEfectivoProveedor = async (req, res) => {
       tipoFactura: { $ne: "Nota de Crédito" },
     }).sort({ fecha: 1 });
 
-    // Pagos ya imputados por factura
+    // Pagos ya imputados por factura (solo de este proveedor)
     const pagosPrevios = await PagoProveedor.aggregate([
+      { $match: { proveedor } },
       { $unwind: "$pagos" },
       { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
     ]);
