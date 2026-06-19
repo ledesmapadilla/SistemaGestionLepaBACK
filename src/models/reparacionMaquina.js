@@ -1,5 +1,17 @@
 import mongoose from "mongoose";
 
+const repuestoSchema = new mongoose.Schema(
+  {
+    id: { type: String },
+    repuesto: { type: String, default: "" },
+    cantidad: { type: Number, default: 0 },
+    precio: { type: Number, default: 0 },
+    proveedor: { type: String, default: "" },
+    responsable: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const itemReparacionSchema = new mongoose.Schema(
   {
     id: { type: String },
@@ -8,7 +20,8 @@ const itemReparacionSchema = new mongoose.Schema(
     descripcion: { type: String, default: "" },
     parte: { type: String, default: "" },
     prioridad: { type: String, default: "Normal" },
-    estado: { type: String, default: "En proceso" },
+    estado: { type: String, default: "Pendiente" },
+    repuestos: { type: [repuestoSchema], default: [] },
   },
   { _id: false }
 );
