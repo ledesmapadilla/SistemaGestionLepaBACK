@@ -22,6 +22,7 @@ const itemReparacionSchema = new mongoose.Schema(
     parte: { type: String, default: "" },
     prioridad: { type: String, default: "Normal" },
     estado: { type: String, default: "Pendiente" },
+    maquinaParada: { type: Boolean, default: false },
     repuestos: { type: [repuestoSchema], default: [] },
   },
   { _id: false }
