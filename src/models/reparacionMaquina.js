@@ -8,6 +8,7 @@ const repuestoSchema = new mongoose.Schema(
     precio: { type: Number, default: 0 },
     proveedor: { type: String, default: "" },
     responsable: { type: String, default: "" },
+    estado: { type: String, default: "Pedido" },
   },
   { _id: false }
 );
