@@ -42,11 +42,27 @@ export const obtenerRegistros = async (req, res) => {
 export const obtenerHistorial = async (req, res) => {
   try {
     const registro = await RegistroBateria.findById(req.params.id)
-      .select("historial")
+      .select("historial maquina maquinaLabel fecha observaciones updatedAt")
+      .populate("maquina", "maquina")
       .populate("historial.maquina", "maquina")
       .lean();
     if (!registro) return res.status(404).json({ msg: "Registro no encontrado" });
-    res.status(200).json({ historial: registro.historial || [] });
+
+    // El array historial guarda solo los estados anteriores. Agregamos el
+    // estado actual como la entrada más reciente para que el último cambio
+    // también se vea en el historial.
+    const historial = [
+      ...(registro.historial || []),
+      {
+        maquina:       registro.maquina,
+        maquinaLabel:  registro.maquinaLabel,
+        fecha:         registro.fecha,
+        observaciones: registro.observaciones,
+        editadoEn:     registro.updatedAt,
+      },
+    ];
+
+    res.status(200).json({ historial });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al obtener historial" });
