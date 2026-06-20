@@ -59,6 +59,7 @@ export const obtenerHistorial = async (req, res) => {
         fecha:         registro.fecha,
         observaciones: registro.observaciones,
         editadoEn:     registro.updatedAt,
+        esActual:      true,
       },
     ];
 
