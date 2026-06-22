@@ -5,6 +5,9 @@ const extraSchema = new mongoose.Schema({
   descuentaAumenta: { type: String, default: "aumenta" },
   monto: { type: Number, default: 0 },
   detalle: { type: String, default: "" },
+  // "dif" identifica la fila generada automáticamente por la diferencia horaria
+  // (hs extras / horas descontadas); se recalcula en cada carga.
+  auto: { type: String, default: "" },
 }, { _id: false });
 
 const registroSchema = new mongoose.Schema({
