@@ -2,10 +2,18 @@ import Asistencia from "../models/asistencia.js";
 
 export const obtenerAsistencia = async (req, res) => {
   try {
-    const { fecha, anio, mes } = req.query;
+    const { fecha, anio, mes, desde, hasta } = req.query;
     if (fecha) {
-      const doc = await Asistencia.findOne({ fecha });
+      const doc = await Asistencia.findOne({ fecha }).lean();
       return res.status(200).json(doc || null);
+    }
+    // Rango de fechas (ej. una semana) en una sola consulta. Las fechas son
+    // strings ISO "YYYY-MM-DD", así que la comparación lexicográfica es correcta.
+    if (desde && hasta) {
+      const docs = await Asistencia.find({ fecha: { $gte: desde, $lte: hasta } })
+        .sort({ fecha: 1 })
+        .lean();
+      return res.status(200).json(docs);
     }
     let filtro = {};
     if (anio) {
