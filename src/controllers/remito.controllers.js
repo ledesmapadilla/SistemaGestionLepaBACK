@@ -6,35 +6,76 @@ const calcTotal = (items = []) =>
 
 /*
 | PUT /remitos/liberar-nc
-| Corrige remitos históricos: los que recibieron una Nota de Crédito antes del
-| fix quedaron con montoFacturado viejo (saldo 0) y por eso no vuelven a estar
-| disponibles para facturar. Resetea montoFacturado=0 y estado="Sin facturar"
-| en los remitos referenciados por una NC, salvo que tengan una factura normal
-| activa (no anulada) que los siga facturando. Idempotente.
+| Repara los remitos afectados por Notas de Crédito. Una NC anula su factura
+| asociada y debe devolver los remitos de esa factura a "Sin facturar".
+| Antes esto fallaba cuando la NC no traía remitos en su array, dejando los
+| remitos "Facturado" con saldo 0 (no aparecen para facturar).
+|
+| Este endpoint, por cada NC:
+|   1. Marca su factura asociada como "Anulada" (si no lo está).
+|   2. Junta los remitos de esa factura asociada + los del array de la NC.
+| Además junta remitos de cualquier factura ya "Anulada".
+| Finalmente libera (estado "Sin facturar", montoFacturado 0) todos esos
+| remitos, salvo que tengan una factura normal ACTIVA que los facture.
+| Idempotente: se puede correr las veces que haga falta.
 */
 export const liberarRemitosNotasCredito = async (req, res) => {
   try {
-    const facturas = await Factura.find().select("tipoFactura estadoPago remitos").lean();
+    const facturas = await Factura.find()
+      .select("tipoFactura estadoPago remitos numeroFactura facturaAsociada")
+      .lean();
 
-    // Remitos que están facturados por una factura normal ACTIVA (no NC, no anulada)
+    const porNumero = new Map(
+      facturas.map((f) => [String(f.numeroFactura).trim(), f])
+    );
+
+    // Números de facturas que una NC pretende anular.
+    const numerosAnulados = new Set();
+    const remitosALiberar = new Set();
+
+    for (const f of facturas) {
+      if (f.tipoFactura === "Nota de Crédito") {
+        // remitos del propio array de la NC
+        (f.remitos || []).forEach((id) => remitosALiberar.add(id.toString()));
+        // remitos de la factura asociada
+        if (f.facturaAsociada) {
+          const clave = String(f.facturaAsociada).trim();
+          numerosAnulados.add(clave);
+          const original = porNumero.get(clave);
+          (original?.remitos || []).forEach((id) => remitosALiberar.add(id.toString()));
+        }
+      }
+      // remitos de facturas ya marcadas Anulada
+      if (f.estadoPago === "Anulada") {
+        (f.remitos || []).forEach((id) => remitosALiberar.add(id.toString()));
+      }
+    }
+
+    // Asegurar que las facturas asociadas a una NC queden "Anulada".
+    let anuladas = 0;
+    if (numerosAnulados.size > 0) {
+      const r = await Factura.updateMany(
+        { numeroFactura: { $in: [...numerosAnulados] }, estadoPago: { $ne: "Anulada" } },
+        { $set: { estadoPago: "Anulada" } }
+      );
+      anuladas = r.modifiedCount;
+    }
+
+    // Remitos facturados por una factura normal ACTIVA (no NC, no anulada por una NC).
     const facturadosActivos = new Set();
     for (const f of facturas) {
-      if (f.tipoFactura !== "Nota de Crédito" && f.estadoPago !== "Anulada") {
+      const esActiva =
+        f.tipoFactura !== "Nota de Crédito" &&
+        f.estadoPago !== "Anulada" &&
+        !numerosAnulados.has(String(f.numeroFactura).trim());
+      if (esActiva) {
         (f.remitos || []).forEach((id) => facturadosActivos.add(id.toString()));
       }
     }
 
-    // Remitos referenciados por alguna NC o por una factura Anulada
-    const remitosNC = new Set();
-    for (const f of facturas) {
-      if (f.tipoFactura === "Nota de Crédito" || f.estadoPago === "Anulada") {
-        (f.remitos || []).forEach((id) => remitosNC.add(id.toString()));
-      }
-    }
-
-    const aLiberar = [...remitosNC].filter((id) => !facturadosActivos.has(id));
+    const aLiberar = [...remitosALiberar].filter((id) => !facturadosActivos.has(id));
     if (aLiberar.length === 0) {
-      return res.status(200).json({ msg: "No hay remitos para liberar", liberados: 0 });
+      return res.status(200).json({ msg: "No hay remitos para liberar", liberados: 0, anuladas });
     }
 
     const resultado = await Remito.updateMany(
@@ -45,6 +86,7 @@ export const liberarRemitosNotasCredito = async (req, res) => {
     res.status(200).json({
       msg: `${resultado.modifiedCount} remito(s) liberado(s)`,
       liberados: resultado.modifiedCount,
+      anuladas,
     });
   } catch (error) {
     console.error(error);
