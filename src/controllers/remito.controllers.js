@@ -24,10 +24,10 @@ export const liberarRemitosNotasCredito = async (req, res) => {
       }
     }
 
-    // Remitos referenciados por alguna NC
+    // Remitos referenciados por alguna NC o por una factura Anulada
     const remitosNC = new Set();
     for (const f of facturas) {
-      if (f.tipoFactura === "Nota de Crédito") {
+      if (f.tipoFactura === "Nota de Crédito" || f.estadoPago === "Anulada") {
         (f.remitos || []).forEach((id) => remitosNC.add(id.toString()));
       }
     }

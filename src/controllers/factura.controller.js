@@ -30,11 +30,20 @@ export const crearFactura = async (req, res) => {
     await nuevaFactura.save();
 
     if (tipoFactura === "Nota de Crédito") {
-      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Sin facturar", montoFacturado: 0 });
+      // Remitos a liberar: los del array propio de la NC + los de la factura asociada.
+      const idsLiberar = new Set((remitos || []).map((id) => id.toString()));
       if (facturaAsociada) {
-        await Factura.findOneAndUpdate(
+        const original = await Factura.findOneAndUpdate(
           { numeroFactura: facturaAsociada },
-          { estadoPago: "Anulada" }
+          { estadoPago: "Anulada" },
+          { new: false }
+        ).select("remitos").lean();
+        (original?.remitos || []).forEach((id) => idsLiberar.add(id.toString()));
+      }
+      if (idsLiberar.size > 0) {
+        await Remito.updateMany(
+          { _id: { $in: [...idsLiberar] } },
+          { estado: "Sin facturar", montoFacturado: 0 }
         );
       }
     } else if (montosPorRemito && montosPorRemito.length > 0) {
