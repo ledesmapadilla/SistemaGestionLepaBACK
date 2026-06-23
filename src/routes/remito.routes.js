@@ -7,6 +7,7 @@ import {
   eliminarItemRemito,
   editarItemRemito,
   recalcularEstados,
+  liberarRemitosNotasCredito,
   existeRemito,
   proximoNumeroRemito,
 } from "../controllers/remito.controllers.js";
@@ -14,6 +15,7 @@ import {
 const router = Router();
 
 router.put("/recalcular-estados", recalcularEstados);
+router.put("/liberar-nc", liberarRemitosNotasCredito);
 router.get("/existe/:numero", existeRemito);
 router.get("/proximo-numero", proximoNumeroRemito);
 router.get("/", obtenerRemitos);

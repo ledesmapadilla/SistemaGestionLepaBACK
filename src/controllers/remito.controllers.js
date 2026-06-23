@@ -1,7 +1,56 @@
 import Remito from "../models/remito.js";
+import Factura from "../models/factura.js";
 
 const calcTotal = (items = []) =>
   items.reduce((s, i) => s + Number(i.cantidad) * Number(i.precioUnitario), 0);
+
+/*
+| PUT /remitos/liberar-nc
+| Corrige remitos históricos: los que recibieron una Nota de Crédito antes del
+| fix quedaron con montoFacturado viejo (saldo 0) y por eso no vuelven a estar
+| disponibles para facturar. Resetea montoFacturado=0 y estado="Sin facturar"
+| en los remitos referenciados por una NC, salvo que tengan una factura normal
+| activa (no anulada) que los siga facturando. Idempotente.
+*/
+export const liberarRemitosNotasCredito = async (req, res) => {
+  try {
+    const facturas = await Factura.find().select("tipoFactura estadoPago remitos").lean();
+
+    // Remitos que están facturados por una factura normal ACTIVA (no NC, no anulada)
+    const facturadosActivos = new Set();
+    for (const f of facturas) {
+      if (f.tipoFactura !== "Nota de Crédito" && f.estadoPago !== "Anulada") {
+        (f.remitos || []).forEach((id) => facturadosActivos.add(id.toString()));
+      }
+    }
+
+    // Remitos referenciados por alguna NC
+    const remitosNC = new Set();
+    for (const f of facturas) {
+      if (f.tipoFactura === "Nota de Crédito") {
+        (f.remitos || []).forEach((id) => remitosNC.add(id.toString()));
+      }
+    }
+
+    const aLiberar = [...remitosNC].filter((id) => !facturadosActivos.has(id));
+    if (aLiberar.length === 0) {
+      return res.status(200).json({ msg: "No hay remitos para liberar", liberados: 0 });
+    }
+
+    const resultado = await Remito.updateMany(
+      { _id: { $in: aLiberar } },
+      { $set: { estado: "Sin facturar", montoFacturado: 0 } }
+    );
+
+    res.status(200).json({
+      msg: `${resultado.modifiedCount} remito(s) liberado(s)`,
+      liberados: resultado.modifiedCount,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al liberar remitos de notas de crédito" });
+  }
+};
 
 export const recalcularEstados = async (req, res) => {
   try {
