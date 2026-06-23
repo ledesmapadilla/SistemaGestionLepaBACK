@@ -30,7 +30,7 @@ export const crearFactura = async (req, res) => {
     await nuevaFactura.save();
 
     if (tipoFactura === "Nota de Crédito") {
-      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Sin facturar" });
+      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Sin facturar", montoFacturado: 0 });
       if (facturaAsociada) {
         await Factura.findOneAndUpdate(
           { numeroFactura: facturaAsociada },
