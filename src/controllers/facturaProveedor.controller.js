@@ -12,8 +12,8 @@ export const obtenerFacturasProveedores = async (req, res) => {
 
 export const crearFacturaProveedor = async (req, res) => {
   try {
-    const { fecha, tipoFactura, numeroFactura, proveedor, concepto, obra, total } = req.body;
-    const nueva = new FacturaProveedor({ fecha, tipoFactura, numeroFactura, proveedor, concepto, obra, total });
+    const { fecha, tipoFactura, numeroFactura, proveedor, concepto, observaciones, obra, total } = req.body;
+    const nueva = new FacturaProveedor({ fecha, tipoFactura, numeroFactura, proveedor, concepto, observaciones, obra, total });
     await nueva.save();
     res.status(201).json({ msg: "Factura creada correctamente", factura: nueva });
   } catch (error) {
