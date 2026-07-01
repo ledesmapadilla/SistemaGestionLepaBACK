@@ -9,6 +9,7 @@ const repuestoSchema = new mongoose.Schema(
     proveedor: { type: String, default: "" },
     responsable: { type: String, default: "" },
     estado: { type: String, default: "Pedido" },
+    observaciones: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -23,6 +24,7 @@ const itemReparacionSchema = new mongoose.Schema(
     prioridad: { type: String, default: "Normal" },
     estado: { type: String, default: "Pendiente" },
     maquinaParada: { type: Boolean, default: false },
+    observaciones: { type: String, default: "" },
     repuestos: { type: [repuestoSchema], default: [] },
   },
   { _id: false }
