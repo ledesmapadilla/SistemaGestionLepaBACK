@@ -2,6 +2,13 @@ import RegistroCubierta from "../models/registroCubierta.js";
 import "../models/cubierta.js";  // registrar modelo para populate
 import "../models/maquina.js";   // registrar modelo para populate
 
+// Registros previos a la separación por categoría no tienen el campo:
+// se consideran "camiones".
+const filtroCategoria = (categoria) =>
+  (!categoria || categoria === "camiones")
+    ? { $or: [{ categoria: "camiones" }, { categoria: { $exists: false } }] }
+    : { categoria };
+
 export const crearRegistro = async (req, res) => {
   try {
     const yaExiste = await RegistroCubierta.findOne({ cubierta: req.body.cubierta });
@@ -21,7 +28,7 @@ export const crearRegistro = async (req, res) => {
 
 export const obtenerRegistros = async (req, res) => {
   try {
-    const registros = await RegistroCubierta.find()
+    const registros = await RegistroCubierta.find(filtroCategoria(req.query.categoria))
       .select("-historial")
       .populate("cubierta", "nombreCubierta")
       .populate("maquina", "maquina")

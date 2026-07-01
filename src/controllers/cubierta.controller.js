@@ -1,5 +1,12 @@
 import Cubierta from "../models/cubierta.js";
 
+// Registros previos a la separación por categoría no tienen el campo:
+// se consideran "camiones".
+const filtroCategoria = (categoria) =>
+  (!categoria || categoria === "camiones")
+    ? { $or: [{ categoria: "camiones" }, { categoria: { $exists: false } }] }
+    : { categoria };
+
 export const crearCubierta = async (req, res) => {
   try {
     const nueva = new Cubierta(req.body);
@@ -16,7 +23,7 @@ export const crearCubierta = async (req, res) => {
 
 export const obtenerCubiertas = async (req, res) => {
   try {
-    const cubiertas = await Cubierta.find().sort({ createdAt: -1 });
+    const cubiertas = await Cubierta.find(filtroCategoria(req.query.categoria)).sort({ createdAt: -1 });
     res.status(200).json(cubiertas);
   } catch (error) {
     console.error(error);

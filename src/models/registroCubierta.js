@@ -14,6 +14,7 @@ const historialEntrySchema = new mongoose.Schema(
 const registroCubiertaSchema = new mongoose.Schema(
   {
     cubierta:      { type: mongoose.Schema.Types.ObjectId, ref: "Cubierta", required: true },
+    categoria:     { type: String, default: "camiones", index: true },
     maquina:       { type: mongoose.Schema.Types.ObjectId, ref: "Maquina" },
     maquinaLabel:  { type: String, default: "" },
     fecha:         { type: String, default: "" },
