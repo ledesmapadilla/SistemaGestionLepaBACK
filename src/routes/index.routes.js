@@ -29,6 +29,7 @@ import registroCubiertaRoutes from "./registroCubierta.routes.js";
 import chequesPropioRoutes from "./chequePropio.routes.js";
 import dato931Routes from "./dato931.routes.js";
 import datoImpuestoRoutes from "./datoImpuesto.routes.js";
+import pendienteResponsableRoutes from "./pendienteResponsable.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -69,5 +70,6 @@ router.use("/registro-cubiertas", registroCubiertaRoutes);
 router.use("/cheques-propio", chequesPropioRoutes);
 router.use("/dato931", dato931Routes);
 router.use("/dato-impuesto", datoImpuestoRoutes);
+router.use("/pendientes-responsable", pendienteResponsableRoutes);
 
 export default router;
