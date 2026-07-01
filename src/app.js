@@ -5,8 +5,8 @@ import mongoose from "mongoose";
 import { lastDbError, getDbConnection } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
 import RegistroBateria from "./models/registroBateria.js";
-import Cubierta from "./models/cubierta.js";
 import RegistroCubierta from "./models/registroCubierta.js";
+import { asegurarIndicesCubierta } from "./controllers/cubierta.controller.js";
 
 // Cuando la DB conecte, sincronizar índices para eliminar índices obsoletos
 // (ej.: bateria_1 unique que quedó de una versión anterior del schema)
@@ -18,15 +18,12 @@ mongoose.connection.once("open", async () => {
     console.warn("[APP] syncIndexes warning:", e.message);
   }
 
-  // Migración cubiertas: asignar categoría "camiones" a los registros previos
-  // a la separación por tipo de máquina, y reemplazar el índice único de
-  // nombreCubierta por el compuesto { nombreCubierta, categoria }.
+  // Migración cubiertas: eliminar índice único obsoleto y crear el compuesto
+  // { nombreCubierta, categoria }, más backfill de categoría en registros previos.
   try {
-    const rc = await Cubierta.updateMany({ categoria: { $exists: false } }, { $set: { categoria: "camiones" } });
+    await asegurarIndicesCubierta();
     const rr = await RegistroCubierta.updateMany({ categoria: { $exists: false } }, { $set: { categoria: "camiones" } });
-    console.info(`[APP] Backfill categoría cubiertas: catálogo=${rc.modifiedCount} registros=${rr.modifiedCount}`);
-    await Cubierta.syncIndexes();
-    console.info("[APP] Cubierta.syncIndexes() OK — índice compuesto nombreCubierta+categoria");
+    console.info(`[APP] Migración cubiertas OK — registros backfilleados=${rr.modifiedCount}`);
   } catch (e) {
     console.warn("[APP] migración cubiertas warning:", e.message);
   }
