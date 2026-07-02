@@ -15,15 +15,12 @@ export const guardarPendientes = async (req, res) => {
     if (!responsable) {
       return res.status(400).json({ msg: "Falta el responsable" });
     }
-    let doc = await PendienteResponsable.findOne({ responsable });
-    if (doc) {
-      doc.tareas = tareas || [];
-      doc.markModified("tareas");
-      await doc.save();
-    } else {
-      doc = new PendienteResponsable({ responsable, tareas: tareas || [] });
-      await doc.save();
-    }
+    // Upsert en un solo viaje a la base (antes eran findOne + save).
+    const doc = await PendienteResponsable.findOneAndUpdate(
+      { responsable },
+      { $set: { tareas: tareas || [] } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
     res.status(200).json({ msg: "Pendientes guardados", data: doc });
   } catch (error) {
     res.status(500).json({ msg: "Error al guardar pendientes", detalle: error.message });

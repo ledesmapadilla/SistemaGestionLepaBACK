@@ -26,15 +26,12 @@ export const guardarReparaciones = async (req, res) => {
     if (!maquina) {
       return res.status(400).json({ msg: "Falta la máquina" });
     }
-    let doc = await ReparacionMaquina.findOne({ maquina });
-    if (doc) {
-      doc.reparaciones = reparaciones || [];
-      doc.markModified("reparaciones");
-      await doc.save();
-    } else {
-      doc = new ReparacionMaquina({ maquina, reparaciones: reparaciones || [] });
-      await doc.save();
-    }
+    // Upsert en un solo viaje a la base (antes eran findOne + save).
+    const doc = await ReparacionMaquina.findOneAndUpdate(
+      { maquina },
+      { $set: { reparaciones: reparaciones || [] } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
     res.status(200).json({ msg: "Reparaciones guardadas", data: doc });
   } catch (error) {
     res.status(500).json({ msg: "Error al guardar reparaciones", detalle: error.message });
