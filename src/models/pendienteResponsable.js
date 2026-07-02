@@ -7,6 +7,7 @@ const tareaSchema = new mongoose.Schema(
     tarea: { type: String, default: "" },
     dias: { type: String, default: "" },
     estado: { type: String, default: "Pendiente" },
+    fechaTerminado: { type: String, default: "" },
     observaciones: { type: String, default: "" },
   },
   { _id: false }
