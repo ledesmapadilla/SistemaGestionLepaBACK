@@ -4,6 +4,7 @@ const tareaSchema = new mongoose.Schema(
   {
     id: { type: String },
     fecha: { type: String, default: "" },
+    maquina: { type: String, default: "" },
     tarea: { type: String, default: "" },
     dias: { type: String, default: "" },
     estado: { type: String, default: "Pendiente" },
