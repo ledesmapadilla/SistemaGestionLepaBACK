@@ -10,6 +10,8 @@ const tareaSchema = new mongoose.Schema(
     estado: { type: String, default: "Pendiente" },
     fechaTerminado: { type: String, default: "" },
     observaciones: { type: String, default: "" },
+    // Vínculo con una reparación (para mantenerlas sincronizadas).
+    reparacionId: { type: String, default: "" },
   },
   { _id: false }
 );

@@ -26,6 +26,9 @@ const itemReparacionSchema = new mongoose.Schema(
     maquinaParada: { type: Boolean, default: false },
     observaciones: { type: String, default: "" },
     repuestos: { type: [repuestoSchema], default: [] },
+    // Vínculo con una tarea de Pendientes (para mantenerlas sincronizadas).
+    pendResp: { type: String, default: "" },
+    pendTaskId: { type: String, default: "" },
   },
   { _id: false }
 );
