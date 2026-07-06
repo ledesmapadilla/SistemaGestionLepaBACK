@@ -136,7 +136,15 @@ export const obtenerRemitos = async (req, res) => {
           0
         ) * 100) / 100;
         const saldo = Math.round((total - (r.montoFacturado || 0)) * 100) / 100;
-        return saldo > 0.001;
+        if (saldo > 0.001) return true;
+        // Remito automático de precio cerrado/global al que todavía no se le
+        // definió el precio (precioUnitario 0 → total 0): se muestra en "sin
+        // facturar" hasta que se le cargue el precio y se facture.
+        const esGlobalSinPrecio =
+          total <= 0.001 &&
+          (r.montoFacturado || 0) <= 0.001 &&
+          (r.items || []).some((i) => i.servicio === "Precio de la obra");
+        return esGlobalSinPrecio;
       });
     }
 

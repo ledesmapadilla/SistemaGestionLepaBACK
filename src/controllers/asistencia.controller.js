@@ -17,11 +17,20 @@ export const obtenerAsistencia = async (req, res) => {
     }
     let filtro = {};
     if (anio) {
-      const mesStr = mes !== undefined ? String(Number(mes) + 1).padStart(2, "0") : null;
-      const prefijo = mesStr ? `^${anio}-${mesStr}` : `^${anio}`;
-      filtro = { fecha: { $regex: prefijo } };
+      // Rango por prefijo de fecha (usa el índice de `fecha`, a diferencia del
+      // $regex que forzaba scan). Las fechas son "YYYY-MM-DD", comparación léxica.
+      if (mes !== undefined) {
+        const mesNum = Number(mes) + 1;
+        const desde = `${anio}-${String(mesNum).padStart(2, "0")}`;
+        const hasta = mesNum === 12
+          ? `${Number(anio) + 1}-01`
+          : `${anio}-${String(mesNum + 1).padStart(2, "0")}`;
+        filtro = { fecha: { $gte: desde, $lt: hasta } };
+      } else {
+        filtro = { fecha: { $gte: `${anio}`, $lt: `${Number(anio) + 1}` } };
+      }
     }
-    const docs = await Asistencia.find(filtro).sort({ fecha: -1 });
+    const docs = await Asistencia.find(filtro).sort({ fecha: -1 }).lean();
     res.status(200).json(docs);
   } catch (error) {
     res.status(500).json({ msg: "Error al obtener asistencia", detalle: error.message });
