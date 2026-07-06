@@ -11,7 +11,7 @@ export const obtenerCuentaCorriente = async (req, res) => {
 
     const [facturas, cobros] = await Promise.all([
       Factura.find(filtro)
-        .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago")
+        .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago facturaAsociada")
         .populate({
           path: "remitos",
           select: "obra",
@@ -34,12 +34,17 @@ export const obtenerCuentaCorriente = async (req, res) => {
           (f.remitos || []).map((r) => r.obra?.nombreobra).filter(Boolean)
         ),
       ];
+      // La Nota de Crédito muestra entre paréntesis la factura que anula.
+      const descripcion =
+        esNota && f.facturaAsociada
+          ? `${f.tipoFactura} - N° ${f.numeroFactura} (Factura N° ${f.facturaAsociada})`
+          : `${f.tipoFactura} - N° ${f.numeroFactura}`;
       return {
         _id: f._id,
         fecha: f.fecha,
         cliente: f.cliente,
         tipo: "Factura",
-        descripcion: `${f.tipoFactura} - N° ${f.numeroFactura}`,
+        descripcion,
         obras,
         debito: esNota ? 0 : monto,
         credito: esNota ? Math.abs(monto) : 0,
