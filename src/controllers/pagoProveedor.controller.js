@@ -15,6 +15,7 @@ const recalcularEstados = async (facturaIds) => {
   const [facturas, pagados] = await Promise.all([
     FacturaProveedor.find({ _id: { $in: objectIds } }),
     PagoProveedor.aggregate([
+      { $match: { "pagos.factura": { $in: objectIds } } },
       { $unwind: "$pagos" },
       { $match: { "pagos.factura": { $in: objectIds } } },
       { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
@@ -84,17 +85,17 @@ export const crearPagoEfectivoProveedor = async (req, res) => {
       return res.status(400).json({ msg: "Proveedor y monto válido son requeridos" });
     }
 
-    // Facturas del proveedor que generan deuda (excluye notas de crédito)
-    const facturas = await FacturaProveedor.find({
-      proveedor,
-      tipoFactura: { $ne: "Nota de Crédito" },
-    }).sort({ fecha: 1 });
-
-    // Pagos ya imputados por factura (solo de este proveedor)
-    const pagosPrevios = await PagoProveedor.aggregate([
-      { $match: { proveedor } },
-      { $unwind: "$pagos" },
-      { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
+    // Consultas en paralelo para agilizar la respuesta
+    const [facturas, pagosPrevios] = await Promise.all([
+      FacturaProveedor.find({
+        proveedor,
+        tipoFactura: { $ne: "Nota de Crédito" },
+      }).sort({ fecha: 1 }),
+      PagoProveedor.aggregate([
+        { $match: { proveedor } },
+        { $unwind: "$pagos" },
+        { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoPagado" } } },
+      ]),
     ]);
     const pagadoPorFactura = {};
     pagosPrevios.forEach((p) => { if (p._id) pagadoPorFactura[p._id.toString()] = p.total; });

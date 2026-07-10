@@ -22,6 +22,8 @@ export const obtenerTablero = async (req, res) => {
       Maquina.find().lean(),
       ServiceMaquina.find().lean(),
       Asistencia.aggregate([
+        { $match: { "registros.maquina": { $gt: "" } } },
+        { $sort: { fecha: 1 } },
         { $unwind: "$registros" },
         { $match: { "registros.maquina": { $exists: true, $ne: null, $ne: "" } } },
         { $addFields: {
@@ -29,7 +31,6 @@ export const obtenerTablero = async (req, res) => {
           horometroNum: { $convert: { input: "$registros.horometro", to: "double", onError: 0, onNull: 0 } },
         }},
         { $match: { horometroNum: { $gt: 0 } } },
-        { $sort: { horometroNum: 1 } },
         { $group: { _id: "$maquinaLow", horometro: { $last: "$horometroNum" }, fecha: { $last: "$fecha" } } },
       ]),
     ]);

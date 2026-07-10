@@ -68,4 +68,9 @@ mongoose.connection.on("error", (err) => {
   console.error(`[DB] evento error: ${err.message}`);
 });
 
+// Iniciar la conexión en segundo plano inmediatamente al importar el módulo
+getDbConnection().catch((err) => {
+  console.error("[DB] Error en la conexión inicial en segundo plano:", err.message);
+});
+
 export default mongoose;
