@@ -93,6 +93,7 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
       }
     }
     if (cambio) {
+      remito.markModified("items");
       await remito.save();
       remitosModificados++;
     }
