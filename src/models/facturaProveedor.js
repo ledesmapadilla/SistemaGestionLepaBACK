@@ -23,4 +23,7 @@ const facturaProveedorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+facturaProveedorSchema.index({ proveedor: 1 });
+facturaProveedorSchema.index({ createdAt: -1 });
+
 export default mongoose.model("FacturaProveedor", facturaProveedorSchema);

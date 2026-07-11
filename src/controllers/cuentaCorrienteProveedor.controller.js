@@ -6,11 +6,19 @@ const totalFactura = (f) =>
 
 export const obtenerCuentaCorrienteProveedor = async (req, res) => {
   try {
+    const { proveedor } = req.query;
+    const filtro = proveedor ? { proveedor } : {};
+
+    let queryFacturas = FacturaProveedor.find(filtro).sort({ fecha: 1 }).lean();
+    let queryPagos = PagoProveedor.find(filtro).sort({ fecha: 1 }).lean();
+
+    if (proveedor) {
+      queryPagos = queryPagos.populate({ path: "pagos.factura", select: "numeroFactura" });
+    }
+
     const [facturas, pagos] = await Promise.all([
-      FacturaProveedor.find().sort({ fecha: 1 }),
-      PagoProveedor.find()
-        .populate({ path: "pagos.factura", select: "numeroFactura" })
-        .sort({ fecha: 1 }),
+      queryFacturas,
+      queryPagos,
     ]);
 
     const movFacturas = facturas.map((f) => {

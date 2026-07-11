@@ -32,4 +32,7 @@ const pagoProveedorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+pagoProveedorSchema.index({ proveedor: 1 });
+pagoProveedorSchema.index({ createdAt: -1 });
+
 export default mongoose.model("PagoProveedor", pagoProveedorSchema);
