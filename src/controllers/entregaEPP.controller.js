@@ -3,6 +3,13 @@ import EntregaEPP from "../models/entregaEPP.js";
 // CREATE - registrar nueva entrega de EPP
 export const crearEntregaEPP = async (req, res) => {
   try {
+    if (Array.isArray(req.body)) {
+      const nuevasEntregas = await EntregaEPP.insertMany(req.body);
+      return res.status(201).json({
+        msg: "Entregas de EPP registradas correctamente",
+        entregas: nuevasEntregas,
+      });
+    }
     const nuevaEntrega = new EntregaEPP(req.body);
     await nuevaEntrega.save();
     res.status(201).json({
