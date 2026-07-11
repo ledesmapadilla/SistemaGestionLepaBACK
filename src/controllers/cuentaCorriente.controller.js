@@ -9,21 +9,31 @@ export const obtenerCuentaCorriente = async (req, res) => {
     const { cliente } = req.query;
     const filtro = cliente ? { cliente } : {};
 
+    let queryFacturas = Factura.find(filtro)
+      .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago facturaAsociada")
+      .sort({ fecha: 1 })
+      .lean();
+
+    if (cliente) {
+      queryFacturas = queryFacturas.populate({
+        path: "remitos",
+        select: "obra",
+        populate: { path: "obra", select: "nombreobra" },
+      });
+    }
+
+    let queryCobros = Cobro.find(filtro)
+      .select("fecha cliente medioPago mediosPago pagos")
+      .sort({ fecha: 1 })
+      .lean();
+
+    if (cliente) {
+      queryCobros = queryCobros.populate({ path: "pagos.factura", select: "numeroFactura" });
+    }
+
     const [facturas, cobros] = await Promise.all([
-      Factura.find(filtro)
-        .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago facturaAsociada")
-        .populate({
-          path: "remitos",
-          select: "obra",
-          populate: { path: "obra", select: "nombreobra" },
-        })
-        .sort({ fecha: 1 })
-        .lean(),
-      Cobro.find(filtro)
-        .select("fecha cliente medioPago mediosPago pagos")
-        .populate({ path: "pagos.factura", select: "numeroFactura" })
-        .sort({ fecha: 1 })
-        .lean(),
+      queryFacturas,
+      queryCobros
     ]);
 
     const movFacturas = facturas.map((f) => {
