@@ -3,6 +3,27 @@ import EntregaEPP from "../models/entregaEPP.js";
 // CREATE - registrar nueva entrega de EPP
 export const crearEntregaEPP = async (req, res) => {
   try {
+    const items = Array.isArray(req.body) ? req.body : [req.body];
+
+    // Validar cada elemento
+    for (const item of items) {
+      if (!item.personal) {
+        return res.status(400).json({ msg: "El nombre del personal es requerido." });
+      }
+      if (!item.fecha) {
+        return res.status(400).json({ msg: "La fecha de entrega es requerida." });
+      }
+      if (!item.epp) {
+        return res.status(400).json({ msg: "El tipo de EPP es requerido." });
+      }
+      if (!item.cantidad || item.cantidad < 1) {
+        return res.status(400).json({ msg: `La cantidad para ${item.epp} debe ser al menos 1.` });
+      }
+      if (item.epp === "otros" && (!item.observaciones || !item.observaciones.trim())) {
+        return res.status(400).json({ msg: 'Debe especificar el elemento en las observaciones para "Otros".' });
+      }
+    }
+
     if (Array.isArray(req.body)) {
       const nuevasEntregas = await EntregaEPP.insertMany(req.body);
       return res.status(201).json({
