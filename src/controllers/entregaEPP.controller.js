@@ -43,14 +43,20 @@ export const crearEntregaEPP = async (req, res) => {
   }
 };
 
-// READ - obtener entregas (opcionalmente filtrado por personal)
+// READ - obtener entregas (opcionalmente filtrado por personal y/o rango de fechas)
 export const obtenerEntregasEPP = async (req, res) => {
   try {
-    const { personal } = req.query;
+    const { personal, desde, hasta } = req.query;
     let filtros = {};
 
     if (personal) {
       filtros.personal = personal;
+    }
+
+    if (desde || hasta) {
+      filtros.fecha = {};
+      if (desde) filtros.fecha.$gte = desde;
+      if (hasta) filtros.fecha.$lte = hasta;
     }
 
     const entregas = await EntregaEPP.find(filtros).sort({ fecha: -1 });
