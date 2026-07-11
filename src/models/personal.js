@@ -17,6 +17,12 @@ const personalSchema = new mongoose.Schema(
     activo: { type: Boolean, default: true },
     fechaAlta: { type: String, default: null },
     fechaDesactivado: { type: String, default: null },
+    talles: {
+      camisa: { type: String, default: "" },
+      pantalon: { type: String, default: "" },
+      botines: { type: String, default: "" },
+      otros: { type: String, default: "" }
+    },
   },
   { timestamps: true }
 );
