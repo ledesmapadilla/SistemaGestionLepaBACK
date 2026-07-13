@@ -7,18 +7,99 @@ const totalFactura = (f) =>
 export const obtenerCuentaCorrienteProveedor = async (req, res) => {
   try {
     const { proveedor } = req.query;
-    const filtro = proveedor ? { proveedor } : {};
 
-    let queryFacturas = FacturaProveedor.find(filtro).sort({ fecha: 1 }).lean();
-    let queryPagos = PagoProveedor.find(filtro).sort({ fecha: 1 }).lean();
+    if (!proveedor) {
+      // Optimización: Si no se especifica proveedor, devolvemos un resumen agregado para la pantalla principal.
+      // Esto evita cargar miles de documentos y transferir gigabytes de datos innecesarios.
+      const totalFacturaExpr = {
+        $cond: [
+          { $in: ["$tipoFactura", ["Factura X", "Factura B"]] },
+          "$total",
+          { $multiply: ["$total", 1.21] }
+        ]
+      };
 
-    if (proveedor) {
-      queryPagos = queryPagos.populate({ path: "pagos.factura", select: "numeroFactura" });
+      const [facturasAgg, pagosAgg] = await Promise.all([
+        FacturaProveedor.aggregate([
+          {
+            $group: {
+              _id: "$proveedor",
+              debito: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$tipoFactura", "Nota de Crédito"] },
+                    0,
+                    totalFacturaExpr
+                  ]
+                }
+              },
+              credito: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$tipoFactura", "Nota de Crédito"] },
+                    { $abs: totalFacturaExpr },
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        ]),
+        PagoProveedor.aggregate([
+          {
+            $project: {
+              proveedor: 1,
+              montoPago: { $sum: "$mediosPago.monto" }
+            }
+          },
+          {
+            $group: {
+              _id: "$proveedor",
+              credito: { $sum: "$montoPago" }
+            }
+          }
+        ])
+      ]);
+
+      const resumen = {};
+      facturasAgg.forEach((f) => {
+        if (!f._id) return;
+        resumen[f._id] = {
+          proveedor: f._id,
+          debito: f.debito || 0,
+          credito: f.credito || 0,
+        };
+      });
+
+      pagosAgg.forEach((p) => {
+        if (!p._id) return;
+        if (!resumen[p._id]) {
+          resumen[p._id] = {
+            proveedor: p._id,
+            debito: 0,
+            credito: 0,
+          };
+        }
+        resumen[p._id].credito += p.credito || 0;
+      });
+
+      // Creamos la lista resumen simulando los movimientos individuales que espera el front
+      const listaResumen = Object.values(resumen).map((r) => ({
+        proveedor: r.proveedor,
+        debito: r.debito,
+        credito: r.credito,
+        tipo: "Factura", // Dummy para complacer al mapeo del front
+        fecha: "2000-01-01",
+      }));
+
+      return res.status(200).json(listaResumen);
     }
 
+    // Detalle de un proveedor específico (Optimizado con índice por proveedor)
+    const filtro = { proveedor };
     const [facturas, pagos] = await Promise.all([
-      queryFacturas,
-      queryPagos,
+      FacturaProveedor.find(filtro).sort({ fecha: 1 }).lean(),
+      PagoProveedor.find(filtro).sort({ fecha: 1 }).populate({ path: "pagos.factura", select: "numeroFactura" }).lean(),
     ]);
 
     const movFacturas = facturas.map((f) => {
