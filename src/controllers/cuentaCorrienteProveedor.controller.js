@@ -38,7 +38,7 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
     });
 
     const movPagos = pagos.map((p) => {
-      const totalPagado = (p.pagos || []).reduce((sum, i) => sum + (i.montoPagado || 0), 0);
+      const totalPagado = (p.mediosPago || []).reduce((sum, m) => sum + (m.monto || 0), 0);
       const medios = (p.mediosPago || []).map((m) => m.medioPago).join(", ") || "-";
       const numeros = [
         ...new Set((p.pagos || []).map((i) => i.factura?.numeroFactura).filter(Boolean)),
