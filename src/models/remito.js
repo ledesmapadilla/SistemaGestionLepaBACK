@@ -48,6 +48,10 @@ const remitoSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    oc: {
+      type: String,
+      default: "",
+    },
     items: [itemSchema],
   },
   { timestamps: true }
