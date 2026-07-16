@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import PagoProveedor from "../models/pagoProveedor.js";
 import FacturaProveedor from "../models/facturaProveedor.js";
+import Cobro from "../models/cobro.js";
+import ChequePropio from "../models/chequePropio.js";
 
 const totalFactura = (f) =>
   f.tipoFactura === "Factura X" || f.tipoFactura === "Factura B" ? f.total : f.total * 1.21;
@@ -162,8 +164,50 @@ export const editarPagoProveedor = async (req, res) => {
 
 export const eliminarPagoProveedor = async (req, res) => {
   try {
-    const pago = await PagoProveedor.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    const pago = await PagoProveedor.findById(id);
     if (!pago) return res.status(404).json({ msg: "Pago no encontrado" });
+
+    // Procesar los medios de pago para restaurar cheques
+    if (pago.mediosPago && pago.mediosPago.length > 0) {
+      for (const m of pago.mediosPago) {
+        if (m.medioPago === "Cheque tercero" || m.medioPago === "E-Cheq tercero") {
+          const tipoCheque = m.medioPago === "Cheque tercero" ? "Cheque" : "E-Cheq";
+          // Buscar el cobro que contiene este cheque con el estado "Pago proveedores"
+          const cobro = await Cobro.findOne({
+            "mediosPago": {
+              $elemMatch: {
+                medioPago: tipoCheque,
+                numeroCheque: m.numeroCheque,
+                estado: "Pago proveedores"
+              }
+            }
+          });
+
+          if (cobro) {
+            const index = cobro.mediosPago.findIndex(
+              (c) => c.medioPago === tipoCheque && c.numeroCheque === m.numeroCheque && c.estado === "Pago proveedores"
+            );
+            if (index !== -1) {
+              await Cobro.updateOne(
+                { _id: cobro._id },
+                {
+                  $set: {
+                    [`mediosPago.${index}.estado`]: "En cartera",
+                    [`mediosPago.${index}.proveedor`]: ""
+                  }
+                }
+              );
+            }
+          }
+        } else if (m.medioPago === "Cheque propio" || m.medioPago === "E-Cheq propio") {
+          // Eliminar el cheque propio emitido para este pago
+          await ChequePropio.deleteOne({ numeroCheque: m.numeroCheque });
+        }
+      }
+    }
+
+    await PagoProveedor.findByIdAndDelete(id);
     await recalcularEstados((pago.pagos || []).map((p) => p.factura));
     res.status(200).json({ msg: "Pago eliminado correctamente" });
   } catch (error) {
