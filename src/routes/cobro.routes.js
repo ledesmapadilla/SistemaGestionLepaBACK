@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { obtenerCobros, crearCobro, editarCobro, eliminarCobro, recalcularTodasLasFacturas, actualizarEstadoMedioPago } from "../controllers/cobro.controller.js";
+import { obtenerCobros, crearCobro, editarCobro, eliminarCobro, recalcularTodasLasFacturas, actualizarEstadoMedioPago, obtenerChequesEnCartera } from "../controllers/cobro.controller.js";
 
 const router = Router();
 
 router.get("/recalcular-todo", recalcularTodasLasFacturas);
+router.get("/cheques-en-cartera", obtenerChequesEnCartera);
 router.get("/", obtenerCobros);
 router.post("/", crearCobro);
 router.put("/:id", editarCobro);

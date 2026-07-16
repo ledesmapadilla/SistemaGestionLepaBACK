@@ -2,7 +2,12 @@ import FacturaProveedor from "../models/facturaProveedor.js";
 
 export const obtenerFacturasProveedores = async (req, res) => {
   try {
-    const facturas = await FacturaProveedor.find().sort({ createdAt: -1 });
+    const { estadoPago } = req.query;
+    let query = {};
+    if (estadoPago) {
+      query.estadoPago = estadoPago;
+    }
+    const facturas = await FacturaProveedor.find(query).sort({ createdAt: -1 });
     res.status(200).json(facturas);
   } catch (error) {
     console.error(error);

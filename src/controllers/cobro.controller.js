@@ -154,3 +154,39 @@ export const eliminarCobro = async (req, res) => {
     res.status(500).json({ msg: "Error al eliminar cobro" });
   }
 };
+
+export const obtenerChequesEnCartera = async (req, res) => {
+  try {
+    const cobros = await Cobro.find(
+      {
+        "mediosPago.medioPago": { $in: ["Cheque", "E-Cheq"] },
+        "mediosPago.estado": { $in: ["En cartera", null, ""] }
+      },
+      { cliente: 1, mediosPago: 1 }
+    ).lean();
+
+    const filas = [];
+    cobros.forEach((cobro) => {
+      (cobro.mediosPago || []).forEach((m, medioIndex) => {
+        if ((m.medioPago === "Cheque" || m.medioPago === "E-Cheq") &&
+            (m.estado === "En cartera" || !m.estado)) {
+          filas.push({
+            _id: `${cobro._id}-${medioIndex}`,
+            cobroId: cobro._id,
+            medioIndex,
+            cliente: cobro.cliente,
+            numeroCheque: m.numeroCheque || "",
+            valor: m.monto,
+            fechaVencimiento: m.fechaCobro || "",
+            tipo: m.medioPago,
+          });
+        }
+      });
+    });
+
+    res.status(200).json(filas);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al obtener cheques en cartera" });
+  }
+};
