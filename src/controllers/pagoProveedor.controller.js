@@ -38,24 +38,27 @@ const recalcularEstados = async (facturaIds) => {
 
 export const obtenerPagosProveedores = async (req, res) => {
   try {
-    const { obra } = req.query;
+    const { obra, proveedor } = req.query;
     let pagoQuery = {};
     if (obra) {
-      const facturasConObra = await FacturaProveedor.find({ obra }, { _id: 1 });
+      const facturasConObra = await FacturaProveedor.find({ obra }, { _id: 1 }).lean();
       const ids = facturasConObra.map((f) => f._id);
       pagoQuery = { "pagos.factura": { $in: ids } };
     }
-    const pagos = await PagoProveedor.find(pagoQuery).sort({ createdAt: -1 });
+    if (proveedor) {
+      pagoQuery.proveedor = proveedor;
+    }
+    const pagos = await PagoProveedor.find(pagoQuery).sort({ createdAt: -1 }).lean();
     const facturaIds = [...new Set(
       pagos.flatMap((p) => (p.pagos || []).map((i) => i.factura?.toString()).filter(Boolean))
     )];
-    const facturas = await FacturaProveedor.find({ _id: { $in: facturaIds } });
+    const facturas = await FacturaProveedor.find({ _id: { $in: facturaIds } }).lean();
     const facturaMap = {};
-    facturas.forEach((f) => { facturaMap[f._id.toString()] = f.toObject(); });
+    facturas.forEach((f) => { facturaMap[f._id.toString()] = f; });
     const pagosPopulados = pagos.map((p) => ({
-      ...p.toObject(),
+      ...p,
       pagos: (p.pagos || []).map((i) => ({
-        ...i.toObject(),
+        ...i,
         factura: facturaMap[i.factura?.toString()] ?? null,
       })),
     }));
