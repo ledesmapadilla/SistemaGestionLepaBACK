@@ -1,5 +1,49 @@
 import Asistencia from "../models/asistencia.js";
+import Personal from "../models/personal.js";
+import Maquina from "../models/maquina.js";
+import Obra from "../models/obra.js";
+import ServiceMaquina from "../models/serviceMaquina.js";
 import { validarHorometro } from "../helpers/horometro.js";
+
+// Todo lo que necesita la pantalla de Asistencia en una sola llamada.
+// Antes eran 5 requests en paralelo, y contra una función serverless eso puede
+// levantar varias instancias frías a la vez (cada una con su arranque y su
+// conexión). Con una sola request se paga un arranque, no cinco.
+export const obtenerDatosPantalla = async (req, res) => {
+  try {
+    const { anio, mes } = req.query;
+
+    let filtroFecha = {};
+    if (anio) {
+      if (mes !== undefined) {
+        const mesNum = Number(mes) + 1;
+        const desde = `${anio}-${String(mesNum).padStart(2, "0")}`;
+        const hasta =
+          mesNum === 12 ? `${Number(anio) + 1}-01` : `${anio}-${String(mesNum + 1).padStart(2, "0")}`;
+        filtroFecha = { fecha: { $gte: desde, $lt: hasta } };
+      } else {
+        filtroFecha = { fecha: { $gte: `${anio}`, $lt: `${Number(anio) + 1}` } };
+      }
+    }
+
+    // Solo los campos que usan la grilla y la planilla del día.
+    const [personal, maquinas, obras, services, asistencia] = await Promise.all([
+      Personal.find({}).select("nombre fechaAlta activo fechaDesactivado semanal").lean(),
+      Maquina.find({}).select("maquina").sort({ createdAt: -1 }).lean(),
+      Obra.find({ estado: "En curso" }).select("nombreobra estado").lean(),
+      ServiceMaquina.find({ horometro: { $ne: null } })
+        .select("maquina horometro fecha tipo")
+        .populate("maquina", "maquina")
+        .lean(),
+      Asistencia.find(filtroFecha).sort({ fecha: -1 }).lean(),
+    ]);
+
+    res.status(200).json({ personal, maquinas, obras, services, asistencia });
+  } catch (error) {
+    console.error("Error en obtenerDatosPantalla:", error);
+    res.status(500).json({ msg: "Error al obtener los datos de asistencia", detalle: error.message });
+  }
+};
 
 export const obtenerAsistencia = async (req, res) => {
   try {
