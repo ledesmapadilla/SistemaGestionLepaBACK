@@ -14,19 +14,6 @@ const repuestoSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Tareas / avances cargados dentro del detalle de una reparación.
-const detalleSchema = new mongoose.Schema(
-  {
-    id: { type: String },
-    fecha: { type: String },
-    tarea: { type: String, default: "" },
-    responsable: { type: String, default: "" },
-    estado: { type: String, default: "Pendiente" },
-    observaciones: { type: String, default: "" },
-  },
-  { _id: false }
-);
-
 const itemReparacionSchema = new mongoose.Schema(
   {
     id: { type: String },
@@ -39,7 +26,8 @@ const itemReparacionSchema = new mongoose.Schema(
     maquinaParada: { type: Boolean, default: false },
     observaciones: { type: String, default: "" },
     repuestos: { type: [repuestoSchema], default: [] },
-    detalle: { type: [detalleSchema], default: [] },
+    // Texto libre de la página de Detalle de reparación.
+    detalleTexto: { type: String, default: "" },
     // Vínculo con una tarea de Pendientes (para mantenerlas sincronizadas).
     pendResp: { type: String, default: "" },
     pendTaskId: { type: String, default: "" },
