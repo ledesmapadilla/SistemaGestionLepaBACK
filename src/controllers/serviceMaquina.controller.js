@@ -1,7 +1,16 @@
 import ServiceMaquina from "../models/serviceMaquina.js";
+import { validarHorometro } from "../helpers/horometro.js";
 
 export const crearService = async (req, res) => {
   try {
+    // El horómetro nunca puede retroceder.
+    const error = await validarHorometro({
+      maquinaId: req.body.maquina,
+      valor: req.body.horometro,
+      fecha: req.body.fecha,
+    });
+    if (error) return res.status(400).json({ msg: error });
+
     const nuevo = new ServiceMaquina(req.body);
     await nuevo.save();
     const populado = await ServiceMaquina.findById(nuevo._id).populate("maquina", "maquina");
@@ -26,6 +35,16 @@ export const obtenerServices = async (req, res) => {
 
 export const editarService = async (req, res) => {
   try {
+    // Se compara contra el resto de los registros: el propio no cuenta como tope.
+    const actual = await ServiceMaquina.findById(req.params.id).select("maquina fecha").lean();
+    const error = await validarHorometro({
+      maquinaId: req.body.maquina || actual?.maquina,
+      valor: req.body.horometro,
+      fecha: req.body.fecha || actual?.fecha,
+      excluirServiceId: req.params.id,
+    });
+    if (error) return res.status(400).json({ msg: error });
+
     const actualizado = await ServiceMaquina.findByIdAndUpdate(
       req.params.id,
       req.body,

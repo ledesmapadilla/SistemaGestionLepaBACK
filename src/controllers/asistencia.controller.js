@@ -1,4 +1,5 @@
 import Asistencia from "../models/asistencia.js";
+import { validarHorometro } from "../helpers/horometro.js";
 
 export const obtenerAsistencia = async (req, res) => {
   try {
@@ -40,6 +41,39 @@ export const obtenerAsistencia = async (req, res) => {
 export const guardarAsistencia = async (req, res) => {
   try {
     const { fecha, registros } = req.body;
+
+    // El horómetro nunca puede retroceder. Se valida cada máquina cargada en la
+    // planilla contra lo que ya hay registrado hasta esa fecha (sin contar el
+    // día que se está guardando, que es el que se reemplaza).
+    const porMaquina = new Map();
+    (registros || []).forEach((r) => {
+      const nombre = (r?.maquina || "").trim();
+      const valor = Number(r?.horometro);
+      if (!nombre || !r?.horometro || Number.isNaN(valor) || valor <= 0) return;
+      const previo = porMaquina.get(nombre.toLowerCase());
+      // Si el mismo día tiene varias filas de la misma máquina, alcanza con
+      // validar la menor: si esa pasa, las demás también.
+      if (previo == null || valor < previo.valor) porMaquina.set(nombre.toLowerCase(), { nombre, valor });
+    });
+
+    if (porMaquina.size > 0) {
+      const errores = (
+        await Promise.all(
+          [...porMaquina.values()].map((m) =>
+            validarHorometro({
+              maquinaNombre: m.nombre,
+              valor: m.valor,
+              fecha,
+              excluirFechaAsistencia: fecha,
+            })
+          )
+        )
+      ).filter(Boolean);
+
+      if (errores.length > 0) {
+        return res.status(400).json({ msg: errores.join("\n") });
+      }
+    }
 
     let doc = await Asistencia.findOne({ fecha });
     if (doc) {
