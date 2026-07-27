@@ -102,6 +102,115 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
   return remitosModificados;
 };
 
+// ==================== CAMBIO DE MODALIDAD ====================
+// Al cambiar la modalidad de una obra hay que reacomodar sus remitos:
+//  - Precio cerrado → Alquiler: los remitos "Obra propia" pasan a "Sin facturar"
+//    y se borra el remito automático (el del ítem "Precio de la obra", nº 9000+).
+//  - Alquiler → Precio cerrado: los remitos "Sin facturar" pasan a "Obra propia"
+//    y se crea el remito automático con el precio cerrado de la obra.
+// Nunca se tocan los remitos ya facturados (total o parcialmente).
+
+const hoyStr = () => new Date().toISOString().split("T")[0];
+
+const esRemitoAutomatico = (remito) =>
+  (remito.items || []).some((i) => i.servicio === "Precio de la obra");
+
+const estaFacturado = (remito) =>
+  remito.estado === "Facturado" || (remito.montoFacturado || 0) > 0;
+
+// Próximo número libre >= desde (mismo criterio que GET /remitos/proximo-numero).
+const proximoNumeroLibre = async (desde = 9000) => {
+  const usados = await Remito.find(
+    { remito: { $gte: desde } },
+    { remito: 1, _id: 0 }
+  ).lean();
+  const set = new Set(usados.map((r) => r.remito));
+  let numero = desde;
+  while (set.has(numero)) numero++;
+  return numero;
+};
+
+const migrarRemitosPorModalidad = async (obraId, modalidadNueva, precios) => {
+  const resumen = {
+    remitosMigrados: 0,
+    remitoAutoCreado: null,
+    remitoAutoBorrado: null,
+    remitosFacturadosSinTocar: 0,
+  };
+
+  const remitos = await Remito.find({ obra: obraId });
+
+  if (modalidadNueva === "Alquiler") {
+    for (const remito of remitos) {
+      if (estaFacturado(remito)) {
+        resumen.remitosFacturadosSinTocar++;
+        continue;
+      }
+      if (esRemitoAutomatico(remito)) {
+        await Remito.findByIdAndDelete(remito._id);
+        resumen.remitoAutoBorrado = remito.remito;
+        continue;
+      }
+      if (remito.estado === "Obra propia") {
+        remito.estado = "Sin facturar";
+        await remito.save();
+        resumen.remitosMigrados++;
+      }
+    }
+    return resumen;
+  }
+
+  if (modalidadNueva === "Precio cerrado") {
+    for (const remito of remitos) {
+      if (esRemitoAutomatico(remito)) continue;
+      if (estaFacturado(remito)) {
+        resumen.remitosFacturadosSinTocar++;
+        continue;
+      }
+      if (remito.estado === "Sin facturar") {
+        remito.estado = "Obra propia";
+        await remito.save();
+        resumen.remitosMigrados++;
+      }
+    }
+
+    // Remito automático del precio de la obra (si todavía no existe).
+    if (!remitos.some(esRemitoAutomatico)) {
+      const filaPrecioCerrado = (precios || []).find(
+        (p) => p.clasificacion === "Precio cerrado"
+      );
+      const precioObra = Number(filaPrecioCerrado?.precio);
+      const fecha = hoyStr();
+      const numero = await proximoNumeroLibre(9000);
+
+      const remitoAuto = new Remito({
+        obra: obraId,
+        remito: numero,
+        fecha,
+        estado: "Sin facturar",
+        items: [
+          {
+            fecha,
+            maquina: "",
+            servicio: "Precio de la obra",
+            personal: "",
+            cantidad: 1,
+            precioUnitario: isNaN(precioObra) ? 0 : precioObra,
+            costoHoraPersonal: 0,
+            unidad: "Global",
+            gasoil: 0,
+            observaciones: "",
+          },
+        ],
+      });
+      await remitoAuto.save();
+      resumen.remitoAutoCreado = numero;
+    }
+  }
+
+  return resumen;
+};
+
 // CREATE (ya la tenés)
 export const crearObra = async (req, res) => {
   try {
@@ -171,6 +280,12 @@ export const editarObra = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Modalidad previa: si cambia, hay que reacomodar los remitos de la obra.
+    const obraPrevia = await Obra.findById(id, { modalidad: 1 }).lean();
+    if (!obraPrevia) {
+      return res.status(404).json({ message: "Obra no encontrada" });
+    }
+
     const obraActualizada = await Obra.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
@@ -178,6 +293,22 @@ export const editarObra = async (req, res) => {
 
     if (!obraActualizada) {
       return res.status(404).json({ message: "Obra no encontrada" });
+    }
+
+    let cambioModalidad = null;
+    const modalidadNueva = obraActualizada.modalidad;
+    if (
+      modalidadNueva &&
+      modalidadNueva !== obraPrevia.modalidad &&
+      ["Alquiler", "Precio cerrado"].includes(modalidadNueva)
+    ) {
+      cambioModalidad = await migrarRemitosPorModalidad(
+        id,
+        modalidadNueva,
+        req.body.precio || obraActualizada.precio
+      );
+      cambioModalidad.desde = obraPrevia.modalidad || "";
+      cambioModalidad.hasta = modalidadNueva;
     }
 
     // Recalcula los precios de TODOS los remitos de la obra según el precio
@@ -189,7 +320,7 @@ export const editarObra = async (req, res) => {
       remitosActualizados = await recalcularPreciosRemitos(id, req.body.precio);
     }
 
-    res.json({ ...obraActualizada.toObject(), remitosActualizados });
+    res.json({ ...obraActualizada.toObject(), remitosActualizados, cambioModalidad });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
