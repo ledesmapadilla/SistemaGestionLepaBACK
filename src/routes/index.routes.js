@@ -31,6 +31,7 @@ import dato931Routes from "./dato931.routes.js";
 import datoImpuestoRoutes from "./datoImpuesto.routes.js";
 import pendienteResponsableRoutes from "./pendienteResponsable.routes.js";
 import entregaEPPRoutes from "./entregaEPP.routes.js";
+import cargaGasoilRoutes from "./cargaGasoil.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -73,5 +74,6 @@ router.use("/dato931", dato931Routes);
 router.use("/dato-impuesto", datoImpuestoRoutes);
 router.use("/pendientes-responsable", pendienteResponsableRoutes);
 router.use("/entrega-epp", entregaEPPRoutes);
+router.use("/cargas-gasoil", cargaGasoilRoutes);
 
 export default router;
