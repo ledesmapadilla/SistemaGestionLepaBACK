@@ -31,6 +31,11 @@ const maquinaSchema = new mongoose.Schema(
     patente: {
       type: String,
     },
+    // Define si la máquina aparece en el select de cargas de gasoil.
+    usaGasoil: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
