@@ -10,7 +10,7 @@ const cargaGasoilSchema = new mongoose.Schema(
     obra: { type: String, required: true, trim: true },
     maquina: { type: String, required: true, trim: true },
     litros: { type: Number, required: true, min: 0 },
-    quienCarga: { type: String, default: "", trim: true },
+    quienCarga: { type: String, required: true, trim: true },
   },
   { timestamps: true }
 );

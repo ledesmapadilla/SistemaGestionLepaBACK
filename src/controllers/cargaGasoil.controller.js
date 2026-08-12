@@ -11,14 +11,36 @@ const validarCarga = (body) => {
     return "Los litros son obligatorios";
   if (isNaN(Number(body.litros)) || Number(body.litros) <= 0)
     return "Los litros deben ser un número mayor a 0";
+  if (!body.quienCarga) return "Indicá quién carga";
   return null;
 };
+
+// Dos clicks seguidos en Guardar mandan el mismo POST dos veces. Si ya entró
+// una carga idéntica hace segundos, es eso y no una carga nueva de verdad.
+const VENTANA_DUPLICADO_MS = 10000;
+
+const buscarDuplicadaReciente = (body) =>
+  CargaGasoil.findOne({
+    fecha: body.fecha,
+    cliente: body.cliente,
+    obra: body.obra,
+    maquina: body.maquina,
+    litros: Number(body.litros),
+    quienCarga: body.quienCarga,
+    createdAt: { $gte: new Date(Date.now() - VENTANA_DUPLICADO_MS) },
+  });
 
 // CREATE
 export const crearCargaGasoil = async (req, res) => {
   try {
     const error = validarCarga(req.body);
     if (error) return res.status(400).json({ msg: error });
+
+    // Devolvemos la que ya está en vez de crear una segunda igual.
+    const duplicada = await buscarDuplicadaReciente(req.body);
+    if (duplicada) {
+      return res.status(201).json({ msg: "Carga de gasoil creada", carga: duplicada });
+    }
 
     const nuevaCarga = new CargaGasoil({
       ...req.body,
