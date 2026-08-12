@@ -4,7 +4,11 @@ export const crearPersonal = async (req, res) => {
   try {
     const hoy = new Date();
     const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
-    const nuevoPersonal = new Personal({ ...req.body, fechaAlta: fechaHoy });
+    // La fecha de alta la carga el usuario en el modal; si no vino, se usa hoy.
+    const nuevoPersonal = new Personal({
+      ...req.body,
+      fechaAlta: req.body.fechaAlta || fechaHoy,
+    });
     await nuevoPersonal.save();
     res.status(201).json({
       msg: "Personal creado correctamente",
