@@ -32,12 +32,15 @@ import datoImpuestoRoutes from "./datoImpuesto.routes.js";
 import pendienteResponsableRoutes from "./pendienteResponsable.routes.js";
 import entregaEPPRoutes from "./entregaEPP.routes.js";
 import cargaGasoilRoutes from "./cargaGasoil.routes.js";
+import publicoGasoilRoutes from "./publicoGasoil.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
 
 // Rutas públicas (sin token)
 router.use("/usuarios", usuariosRoutes);
+// Alta de gasoil desde el celular, que no loguea. Solo opciones + POST.
+router.use("/publico/gasoil", publicoGasoilRoutes);
 
 // Middleware de autenticación para todo lo demás
 router.use(verificarToken);
