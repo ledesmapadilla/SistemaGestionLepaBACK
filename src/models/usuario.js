@@ -16,9 +16,6 @@ const usuarioSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    contrasenaVisible: {
-      type: String,
-    },
     rol: {
       type: String,
       required: true,
@@ -42,9 +39,9 @@ usuarioSchema.pre("save", async function () {
     }
   }
 
-  // Hashear contraseña solo si fue modificada
+  // Hashear contraseña solo si fue modificada. A propósito no se guarda una
+  // copia en texto plano: si alguien la olvida, se le asigna una nueva.
   if (this.isModified("contrasena")) {
-    this.contrasenaVisible = this.contrasena;
     const salt = await bcrypt.genSalt(10);
     this.contrasena = await bcrypt.hash(this.contrasena, salt);
   }

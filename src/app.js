@@ -6,6 +6,7 @@ import { lastDbError, getDbConnection } from "./server/dbConfig.js";
 import router from "./routes/index.routes.js";
 import RegistroBateria from "./models/registroBateria.js";
 import RegistroCubierta from "./models/registroCubierta.js";
+import Usuario from "./models/usuario.js";
 import { asegurarIndicesCubierta } from "./controllers/cubierta.controller.js";
 
 // Cuando la DB conecte, sincronizar índices para eliminar índices obsoletos
@@ -26,6 +27,18 @@ mongoose.connection.once("open", async () => {
     console.info(`[APP] Migración cubiertas OK — registros backfilleados=${rr.modifiedCount}`);
   } catch (e) {
     console.warn("[APP] migración cubiertas warning:", e.message);
+  }
+
+  // Sacar el campo del schema no borra lo que ya está guardado: las contraseñas
+  // en texto plano siguen en la colección hasta que se las elimine a mano.
+  try {
+    const ru = await Usuario.collection.updateMany(
+      { contrasenaVisible: { $exists: true } },
+      { $unset: { contrasenaVisible: "" } }
+    );
+    console.info(`[APP] Migración usuarios OK — contrasenaVisible eliminada de ${ru.modifiedCount} usuario(s)`);
+  } catch (e) {
+    console.warn("[APP] migración usuarios warning:", e.message);
   }
 });
 

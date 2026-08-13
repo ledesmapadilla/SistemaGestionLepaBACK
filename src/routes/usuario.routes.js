@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { crearUsuario, obtenerUsuarios, editarUsuario, eliminarUsuario, verificarAcceso, loginUsuario } from "../controllers/usuario.controller.js";
+import { crearUsuario, obtenerUsuarios, editarUsuario, eliminarUsuario } from "../controllers/usuario.controller.js";
 
+// ABM de usuarios: todo pide token. El login y verificar-acceso están en
+// usuarioPublico.routes.js, que se monta antes del verificarToken.
 const router = Router();
 
-router.post("/login", loginUsuario);
-router.post("/verificar-acceso", verificarAcceso);
 router.post("/", crearUsuario);
 router.get("/", obtenerUsuarios);
 router.put("/:id", editarUsuario);

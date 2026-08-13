@@ -91,7 +91,7 @@ export const loginUsuario = async (req, res) => {
     if (!coincide) {
       return res.status(401).json({ msg: "Usuario o contraseña incorrectos" });
     }
-    const { contrasena: _, contrasenaVisible: __, ...usuarioSinPass } = usuarioDB.toObject();
+    const { contrasena: _, ...usuarioSinPass } = usuarioDB.toObject();
     const token = jwt.sign(
       { id: usuarioDB._id, usuario: usuarioDB.usuario, rol: usuarioDB.rol },
       process.env.JWT_SECRET,

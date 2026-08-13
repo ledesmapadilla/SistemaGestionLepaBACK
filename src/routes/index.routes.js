@@ -33,12 +33,14 @@ import pendienteResponsableRoutes from "./pendienteResponsable.routes.js";
 import entregaEPPRoutes from "./entregaEPP.routes.js";
 import cargaGasoilRoutes from "./cargaGasoil.routes.js";
 import publicoGasoilRoutes from "./publicoGasoil.routes.js";
+import usuariosPublicoRoutes from "./usuarioPublico.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
 
 const router = Router();
 
 // Rutas públicas (sin token)
-router.use("/usuarios", usuariosRoutes);
+// Solo login y verificar-acceso: el ABM de usuarios va más abajo, protegido.
+router.use("/usuarios", usuariosPublicoRoutes);
 // Alta de gasoil desde el celular, que no loguea. Solo opciones + POST.
 router.use("/publico/gasoil", publicoGasoilRoutes);
 
@@ -46,6 +48,7 @@ router.use("/publico/gasoil", publicoGasoilRoutes);
 router.use(verificarToken);
 
 // Rutas protegidas
+router.use("/usuarios", usuariosRoutes);
 router.use("/clientes", clientesRoutes);
 router.use("/proveedores", proveedoresRoutes);
 router.use("/obras", obrasRoutes);
