@@ -245,10 +245,22 @@ export const obtenerObraPorId = async (req, res) => {
   }
 };
 
+// Las obras traen el array de precios completo, que es lo más pesado del
+// documento. Con ?campos=razonsocial,nombreobra las páginas que solo arman
+// selects se ahorran todo eso.
+const proyeccionDesdeCampos = (campos) => {
+  if (!campos) return null;
+  const lista = campos
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return lista.length > 0 ? lista.join(" ") : null;
+};
+
 // READ - obtener todos
 export const obtenerObras = async (req, res) => {
   try {
-    const { razonsocial, nombreobra, contacto, estado } = req.query;
+    const { razonsocial, nombreobra, contacto, estado, campos } = req.query;
 
     let filtros = {};
 
@@ -267,7 +279,11 @@ export const obtenerObras = async (req, res) => {
       filtros.estado = { $regex: estado, $options: "i" };
     }
 
-    const obras = await Obra.find(filtros);
+    const consulta = Obra.find(filtros);
+    const proyeccion = proyeccionDesdeCampos(campos);
+    if (proyeccion) consulta.select(proyeccion);
+
+    const obras = await consulta.lean();
     res.status(200).json(obras);
   } catch (error) {
     console.error(error);

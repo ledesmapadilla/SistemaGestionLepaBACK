@@ -20,10 +20,21 @@ export const crearPersonal = async (req, res) => {
   }
 };
 
+// El array `semanal` (historial de sueldos) es lo más pesado del documento.
+// Con ?campos=nombre,activo las páginas que solo arman un select lo evitan.
+const proyeccionDesdeCampos = (campos) => {
+  if (!campos) return null;
+  const lista = campos
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return lista.length > 0 ? lista.join(" ") : null;
+};
+
 // READ - obtener todos
 export const obtenerPersonal = async (req, res) => {
   try {
-    const { nombre, semanal } = req.query;
+    const { nombre, semanal, campos } = req.query;
 
     let filtros = {};
 
@@ -37,7 +48,11 @@ export const obtenerPersonal = async (req, res) => {
       filtros["semanal.valor"] = Number(semanal);
     }
 
-    const personal = await Personal.find(filtros);
+    const consulta = Personal.find(filtros);
+    const proyeccion = proyeccionDesdeCampos(campos);
+    if (proyeccion) consulta.select(proyeccion);
+
+    const personal = await consulta.lean();
 
     res.status(200).json(personal);
   } catch (error) {

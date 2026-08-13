@@ -16,9 +16,19 @@ export const crearMaquina = async (req, res) => {
 };
 
 
+// ?campos=maquina,usaGasoil para las páginas que solo necesitan armar un select.
+const proyeccionDesdeCampos = (campos) => {
+  if (!campos) return null;
+  const lista = campos
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return lista.length > 0 ? lista.join(" ") : null;
+};
+
 export const obtenerMaquinas = async (req, res) => {
   try {
-    const { maquina, patente, modelo, marca } = req.query; // <-- Agregamos marca aquí
+    const { maquina, patente, modelo, marca, campos } = req.query; // <-- Agregamos marca aquí
 
     let filtros = {};
 
@@ -35,7 +45,11 @@ export const obtenerMaquinas = async (req, res) => {
       filtros.modelo = { $regex: modelo, $options: "i" };
     }
 
-    const maquinas = await Maquina.find(filtros).sort({ createdAt: -1 });
+    const consulta = Maquina.find(filtros).sort({ createdAt: -1 });
+    const proyeccion = proyeccionDesdeCampos(campos);
+    if (proyeccion) consulta.select(proyeccion);
+
+    const maquinas = await consulta.lean();
     res.status(200).json(maquinas);
   } catch (error) {
     console.error(error);
