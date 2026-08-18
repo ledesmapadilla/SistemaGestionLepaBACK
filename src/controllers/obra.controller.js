@@ -58,6 +58,11 @@ const itemAClasificacionTrabajo = (item) => {
   return null;
 };
 
+const totalRemito = (items = []) =>
+  Math.round(
+    items.reduce((s, i) => s + Number(i.cantidad) * Number(i.precioUnitario), 0) * 100
+  ) / 100;
+
 // Recalcula el precioUnitario de cada ítem de cada remito de la obra según el precio
 // vigente a la fecha del ítem. Devuelve la cantidad de remitos efectivamente modificados.
 const recalcularPreciosRemitos = async (obraId, precios) => {
@@ -99,6 +104,18 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
       }
     }
     if (cambio) {
+      // Si al completar el precio el remito quedó con saldo pendiente, ya no
+      // está facturado: pasa a "Sin facturar" (facturado parcialmente). Es el
+      // caso del remito sellado en $0 al que después se le carga el precio.
+      // Se exige montoFacturado > 0 porque los remitos viejos facturados por
+      // completo no registran el monto y reabrirlos sería un error.
+      if (
+        remito.estado === "Facturado" &&
+        (remito.montoFacturado || 0) > 0 &&
+        totalRemito(remito.items) - remito.montoFacturado >= 1
+      ) {
+        remito.estado = "Sin facturar";
+      }
       remito.markModified("items");
       await remito.save();
       remitosModificados++;

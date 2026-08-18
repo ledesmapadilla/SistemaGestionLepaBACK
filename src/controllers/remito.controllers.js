@@ -5,9 +5,11 @@ const calcTotal = (items = []) =>
 
 export const recalcularEstados = async (req, res) => {
   try {
-    const remitos = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } });
     let corregidos = 0;
-    for (const r of remitos) {
+
+    // 1) Cerrar: sin facturar pero ya sin saldo → "Facturado".
+    const aCerrar = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } });
+    for (const r of aCerrar) {
       const total = Math.round(calcTotal(r.items) * 100) / 100;
       // Un remito sin precio (total 0) no se cierra: si se sella como
       // "Facturado" queda bloqueado y nunca toma el precio de la obra.
@@ -16,6 +18,22 @@ export const recalcularEstados = async (req, res) => {
         corregidos++;
       }
     }
+
+    // 2) Reabrir: marcado "Facturado" pero con saldo pendiente real → vuelve a
+    // "Sin facturar" (facturado parcialmente). Pasa cuando el total sube
+    // después de haberse facturado, p. ej. al cargarle el precio a la obra de
+    // un remito que se había sellado en $0.
+    // Se exige montoFacturado > 0: los remitos viejos facturados por completo
+    // no registran el monto (queda en 0) y reabrirlos sería un error.
+    const aReabrir = await Remito.find({ estado: "Facturado", montoFacturado: { $gt: 0 } });
+    for (const r of aReabrir) {
+      const total = Math.round(calcTotal(r.items) * 100) / 100;
+      if (total - (r.montoFacturado || 0) >= 1) {
+        await Remito.findByIdAndUpdate(r._id, { $set: { estado: "Sin facturar" } });
+        corregidos++;
+      }
+    }
+
     res.status(200).json({ msg: `${corregidos} remito(s) corregido(s)`, corregidos });
   } catch (error) {
     console.error(error);
