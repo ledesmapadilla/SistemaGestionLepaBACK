@@ -9,7 +9,9 @@ export const recalcularEstados = async (req, res) => {
     let corregidos = 0;
     for (const r of remitos) {
       const total = Math.round(calcTotal(r.items) * 100) / 100;
-      if (total - (r.montoFacturado || 0) < 1) {
+      // Un remito sin precio (total 0) no se cierra: si se sella como
+      // "Facturado" queda bloqueado y nunca toma el precio de la obra.
+      if (total > 0 && total - (r.montoFacturado || 0) < 1) {
         await Remito.findByIdAndUpdate(r._id, { $set: { estado: "Facturado" } });
         corregidos++;
       }

@@ -67,14 +67,20 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
   let remitosModificados = 0;
 
   for (const remito of remitos) {
-    // No tocar remitos ya facturados (total o parcial): una factura emitida no
-    // debe cambiar sola. Las correcciones de precio sobre lo ya facturado se
-    // hacen con Nota de Crédito/Débito.
-    if (remito.estado === "Facturado" || (remito.montoFacturado || 0) > 0)
-      continue;
+    // En un remito ya facturado (total o parcial) los precios no se recalculan:
+    // una factura emitida no debe cambiar sola. Las correcciones de precio sobre
+    // lo ya facturado se hacen con Nota de Crédito/Débito.
+    // Única excepción: los ítems que quedaron en 0. Un 0 no es un precio real,
+    // es un dato faltante (típicamente el remito automático de una obra de
+    // precio cerrado creada antes de definir el precio). Esos sí se completan,
+    // porque de lo contrario quedan en $0 para siempre.
+    const facturado =
+      remito.estado === "Facturado" || (remito.montoFacturado || 0) > 0;
 
     let cambio = false;
     for (const item of remito.items) {
+      if (facturado && Number(item.precioUnitario) !== 0) continue;
+
       const mapa = itemAClasificacionTrabajo(item);
       if (!mapa) continue;
 

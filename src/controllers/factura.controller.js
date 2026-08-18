@@ -21,6 +21,25 @@ export const crearFactura = async (req, res) => {
   try {
     const { fecha, tipoFactura, numeroFactura, cliente, remitos, total, montosPorRemito, estadoPago, facturaAsociada } = req.body;
 
+    // Un remito con total $0 no se puede facturar: quedaría marcado "Facturado"
+    // por un importe de cero y, a partir de ahí, bloqueado. Es el caso del
+    // remito automático de una obra de precio cerrado a la que todavía no se le
+    // cargó el precio: primero hay que definirlo en la obra.
+    if (tipoFactura !== "Nota de Crédito" && Array.isArray(remitos) && remitos.length > 0) {
+      const aFacturar = await Remito.find({ _id: { $in: remitos } })
+        .select("remito items")
+        .lean();
+      const sinPrecio = aFacturar.filter(
+        (r) => Math.round(calcularTotalRemito(r.items) * 100) / 100 <= 0
+      );
+      if (sinPrecio.length > 0) {
+        const numeros = sinPrecio.map((r) => `N° ${r.remito}`).join(", ");
+        return res.status(400).json({
+          msg: `El remito ${numeros} no tiene precio cargado (total $0) y no se puede facturar. Cargá el precio en la obra y volvé a intentar.`,
+        });
+      }
+    }
+
     const nuevaFactura = new Factura({
       fecha, tipoFactura, numeroFactura, cliente, remitos, total,
       montosPorRemito: montosPorRemito || [],
@@ -58,7 +77,9 @@ export const crearFactura = async (req, res) => {
         const montoAplicado = Math.min(Math.round(Number(monto) * 100) / 100, saldoPendiente);
         const nuevoMonto = Math.round(((remito.montoFacturado || 0) + montoAplicado) * 100) / 100;
         const $set = { montoFacturado: nuevoMonto };
-        if (totalRemito - nuevoMonto < 1) $set.estado = "Facturado";
+        // Solo se cierra como "Facturado" si el remito tiene importe real:
+        // un total 0 nunca debe quedar sellado (ver validación de arriba).
+        if (totalRemito > 0 && totalRemito - nuevoMonto < 1) $set.estado = "Facturado";
         return { updateOne: { filter: { _id: remitoId }, update: { $set } } };
       }).filter(Boolean);
       if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
