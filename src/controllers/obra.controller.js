@@ -72,19 +72,23 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
   let remitosModificados = 0;
 
   for (const remito of remitos) {
-    // En un remito ya facturado (total o parcial) los precios no se recalculan:
-    // una factura emitida no debe cambiar sola. Las correcciones de precio sobre
-    // lo ya facturado se hacen con Nota de Crédito/Débito.
+    // Un remito cerrado ("Facturado") no recalcula precios: ya se facturó por
+    // completo y una factura emitida no debe cambiar sola. Las correcciones
+    // sobre lo ya facturado se hacen con Nota de Crédito/Débito.
     // Única excepción: los ítems que quedaron en 0. Un 0 no es un precio real,
     // es un dato faltante (típicamente el remito automático de una obra de
     // precio cerrado creada antes de definir el precio). Esos sí se completan,
     // porque de lo contrario quedan en $0 para siempre.
-    const facturado =
-      remito.estado === "Facturado" || (remito.montoFacturado || 0) > 0;
+    //
+    // Un remito facturado solo en parte SÍ recalcula. Es el caso normal del
+    // precio cerrado, que se factura en cuotas: si se renegocia el precio de la
+    // obra, lo ya facturado queda como está y lo que cambia es el saldo. No
+    // recalcularlo dejaba el remito clavado en el precio viejo para siempre.
+    const cerrado = remito.estado === "Facturado";
 
     let cambio = false;
     for (const item of remito.items) {
-      if (facturado && Number(item.precioUnitario) !== 0) continue;
+      if (cerrado && Number(item.precioUnitario) !== 0) continue;
 
       const mapa = itemAClasificacionTrabajo(item);
       if (!mapa) continue;
@@ -104,17 +108,20 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
       }
     }
     if (cambio) {
-      // Si al completar el precio el remito quedó con saldo pendiente, ya no
-      // está facturado: pasa a "Sin facturar" (facturado parcialmente). Es el
-      // caso del remito sellado en $0 al que después se le carga el precio.
-      // Se exige montoFacturado > 0 porque los remitos viejos facturados por
-      // completo no registran el monto y reabrirlos sería un error.
-      if (
-        remito.estado === "Facturado" &&
-        (remito.montoFacturado || 0) > 0 &&
-        totalRemito(remito.items) - remito.montoFacturado >= 1
-      ) {
-        remito.estado = "Sin facturar";
+      // Al cambiar el total cambia el saldo, así que el estado puede quedar
+      // desactualizado en cualquiera de los dos sentidos. Solo se ajusta si hay
+      // un montoFacturado registrado: un 0 significa "no se sabe cuánto se
+      // facturó" y mover el estado a ciegas sería peor que dejarlo.
+      const facturado = remito.montoFacturado || 0;
+      if (facturado > 0) {
+        const saldo = totalRemito(remito.items) - facturado;
+        if (remito.estado === "Facturado" && saldo >= 1) {
+          // Subió el precio: quedó saldo pendiente, vuelve a estar sin facturar.
+          remito.estado = "Sin facturar";
+        } else if (remito.estado === "Sin facturar" && saldo < 1) {
+          // Bajó el precio hasta quedar cubierto por lo ya facturado.
+          remito.estado = "Facturado";
+        }
       }
       remito.markModified("items");
       await remito.save();
