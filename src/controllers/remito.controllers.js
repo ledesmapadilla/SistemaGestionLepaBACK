@@ -1,11 +1,102 @@
 import Remito from "../models/remito.js";
+import Factura from "../models/factura.js";
 
 const calcTotal = (items = []) =>
   items.reduce((s, i) => s + Number(i.cantidad) * Number(i.precioUnitario), 0);
 
+const redondear = (n) => Math.round(n * 100) / 100;
+
+// Los remitos facturados antes de que existiera `montosPorRemito` se marcaron
+// "Facturado" sin registrar cuánto se les facturó (montoFacturado quedó en 0).
+// El dato no se perdió: está en las facturas que los incluyen. Sin reconstruirlo
+// no hay forma de saber que un remito quedó facturado solo en parte.
+// Devuelve cuántos remitos se completaron.
+const backfillMontoFacturado = async () => {
+  const legacy = await Remito.find({
+    estado: "Facturado",
+    $or: [{ montoFacturado: 0 }, { montoFacturado: { $exists: false } }],
+  })
+    .select("items")
+    .lean();
+  if (legacy.length === 0) return 0;
+
+  const facturas = await Factura.find({
+    remitos: { $in: legacy.map((r) => r._id) },
+    tipoFactura: { $ne: "Nota de Crédito" },
+  })
+    .select("remitos total montosPorRemito")
+    .lean();
+  if (facturas.length === 0) return 0;
+
+  // Totales de todos los remitos involucrados, incluidos los "hermanos" que
+  // comparten factura: hacen falta para saber si una factura vieja de varios
+  // remitos alcanza a cubrirlos a todos.
+  const idsInvolucrados = new Set();
+  facturas.forEach((f) => (f.remitos || []).forEach((id) => idsInvolucrados.add(String(id))));
+  const involucrados = await Remito.find({ _id: { $in: [...idsInvolucrados] } })
+    .select("items")
+    .lean();
+  const totalPorId = Object.fromEntries(
+    involucrados.map((r) => [String(r._id), redondear(calcTotal(r.items))])
+  );
+
+  const facturasPorRemito = {};
+  facturas.forEach((f) =>
+    (f.remitos || []).forEach((id) => {
+      (facturasPorRemito[String(id)] ||= []).push(f);
+    })
+  );
+
+  const ops = [];
+  for (const remito of legacy) {
+    const id = String(remito._id);
+    const total = redondear(calcTotal(remito.items));
+    let facturado = 0;
+    let ambiguo = false;
+
+    for (const f of facturasPorRemito[id] || []) {
+      const asignado = (f.montosPorRemito || []).find(
+        (m) => String(m.remitoId) === id
+      );
+      if (asignado) {
+        facturado += Number(asignado.monto) || 0;
+        continue;
+      }
+      // Factura vieja sin montos por remito.
+      if ((f.remitos || []).length === 1) {
+        facturado += Number(f.total) || 0;
+        continue;
+      }
+      const sumaHermanos = redondear(
+        (f.remitos || []).reduce((s, x) => s + (totalPorId[String(x)] || 0), 0)
+      );
+      if ((Number(f.total) || 0) >= sumaHermanos - 1) {
+        // La factura cubre a todos los remitos que incluye: éste está completo.
+        facturado += total;
+      } else {
+        // Cubre solo una parte y no hay forma de saber cuánto le tocó a cada
+        // uno: se deja como está para no inventar un número.
+        ambiguo = true;
+      }
+    }
+
+    if (ambiguo) continue;
+    const monto = Math.min(redondear(facturado), total);
+    if (monto <= 0) continue;
+    ops.push({ updateOne: { filter: { _id: remito._id }, update: { $set: { montoFacturado: monto } } } });
+  }
+
+  if (ops.length > 0) await Remito.bulkWrite(ops);
+  return ops.length;
+};
+
 export const recalcularEstados = async (req, res) => {
   try {
     let corregidos = 0;
+
+    // 0) Completar el montoFacturado que falta, para que los pasos siguientes
+    // decidan sobre el importe real y no sobre un 0 que no significa nada.
+    const completados = await backfillMontoFacturado();
 
     // 1) Cerrar: sin facturar pero ya sin saldo → "Facturado".
     const aCerrar = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } });
@@ -23,8 +114,9 @@ export const recalcularEstados = async (req, res) => {
     // "Sin facturar" (facturado parcialmente). Pasa cuando el total sube
     // después de haberse facturado, p. ej. al cargarle el precio a la obra de
     // un remito que se había sellado en $0.
-    // Se exige montoFacturado > 0: los remitos viejos facturados por completo
-    // no registran el monto (queda en 0) y reabrirlos sería un error.
+    // También alcanza a los remitos viejos, cuyo montoFacturado acaba de
+    // reconstruirse en el paso 0. Se exige montoFacturado > 0: un 0 acá
+    // significa "no se pudo determinar", y reabrir por las dudas sería peor.
     const aReabrir = await Remito.find({ estado: "Facturado", montoFacturado: { $gt: 0 } });
     for (const r of aReabrir) {
       const total = Math.round(calcTotal(r.items) * 100) / 100;
@@ -34,7 +126,11 @@ export const recalcularEstados = async (req, res) => {
       }
     }
 
-    res.status(200).json({ msg: `${corregidos} remito(s) corregido(s)`, corregidos });
+    res.status(200).json({
+      msg: `${corregidos} remito(s) corregido(s)`,
+      corregidos,
+      montosCompletados: completados,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al recalcular estados" });
