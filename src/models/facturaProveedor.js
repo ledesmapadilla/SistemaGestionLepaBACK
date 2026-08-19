@@ -13,6 +13,9 @@ const facturaProveedorSchema = new mongoose.Schema(
     concepto: { type: String, default: "" },
     observaciones: { type: String, default: "" },
     obra: { type: String, default: "" },
+    // Razon social a la que se imputa. Se autocompleta con la de la obra
+    // elegida, pero puede editarse si la factura va a otra.
+    razonsocial: { type: String, default: "" },
     total: { type: Number, default: 0 },
     estadoPago: {
       type: String,
