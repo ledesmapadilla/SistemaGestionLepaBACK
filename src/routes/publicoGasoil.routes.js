@@ -7,8 +7,8 @@ import { crearCargaGasoil } from "../controllers/cargaGasoil.controller.js";
 
 // Rutas SIN token, para la página /gasoil/carga que se usa desde el celular.
 // A propósito solo hay lectura acotada y alta: no se expone el listado completo
-// de cargas, ni edición, ni borrado. /mes devuelve nada más que fecha y máquina.
-// Todo lo demás sigue detrás del login en /api/cargas-gasoil.
+// de cargas, ni edición, ni borrado. /mes devuelve nada más que fecha, máquina
+// y litros. Todo lo demás sigue detrás del login en /api/cargas-gasoil.
 const router = Router();
 
 router.get("/opciones", obtenerOpcionesGasoil);

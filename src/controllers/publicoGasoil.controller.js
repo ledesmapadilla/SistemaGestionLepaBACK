@@ -39,10 +39,11 @@ export const obtenerOpcionesGasoil = async (req, res) => {
   }
 };
 
-// Endpoint sin token para la vista mensual de /gasoil/carga/mes: devuelve solo
-// { fecha, maquina } de las cargas del mes pedido. A propósito no salen litros,
-// obra, cliente ni quién cargó: la página del celular solo muestra qué máquina
-// se cargó cada día. El resto sigue detrás del login en /api/cargas-gasoil.
+// Endpoint sin token para la vista mensual de /gasoil/carga/mes: devuelve
+// { fecha, maquina, litros } de las cargas del mes pedido. A propósito no salen
+// obra, cliente ni quién cargó: la página del celular muestra qué máquina se
+// cargó cada día y, al tocar el día, cuántos litros llevó cada una. El resto
+// sigue detrás del login en /api/cargas-gasoil.
 export const obtenerCargasGasoilDelMes = async (req, res) => {
   try {
     const anio = Number(req.query.anio);
@@ -63,12 +64,14 @@ export const obtenerCargasGasoilDelMes = async (req, res) => {
 
     const cargas = await CargaGasoil.find(
       { fecha: { $gte: desde, $lte: hasta } },
-      "fecha maquina -_id"
+      "fecha maquina litros -_id"
     )
       .sort({ fecha: 1 })
       .lean();
 
-    res.status(200).json(cargas.map((c) => ({ fecha: c.fecha, maquina: c.maquina })));
+    res
+      .status(200)
+      .json(cargas.map((c) => ({ fecha: c.fecha, maquina: c.maquina, litros: c.litros })));
   } catch (error) {
     console.error("Error al obtener las cargas de gasoil del mes:", error);
     res
