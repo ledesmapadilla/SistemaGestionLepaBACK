@@ -19,6 +19,9 @@ const registroSchema = new mongoose.Schema({
   pagado: { type: Number, default: 0 },
   marcado: { type: Number, default: 0 },
   seleccionado: { type: Boolean, default: false },
+  // La fila automática de diferencia horaria (hs extras / horas descontadas) fue
+  // borrada a mano: no se vuelve a generar al recargar la semana.
+  difOmitida: { type: Boolean, default: false },
 }, { _id: false, strict: false });
 
 const proveedorSchema = new mongoose.Schema({
