@@ -32,6 +32,7 @@ import datoImpuestoRoutes from "./datoImpuesto.routes.js";
 import pendienteResponsableRoutes from "./pendienteResponsable.routes.js";
 import entregaEPPRoutes from "./entregaEPP.routes.js";
 import cargaGasoilRoutes from "./cargaGasoil.routes.js";
+import filtroMaquinaRoutes from "./filtroMaquina.routes.js";
 import publicoGasoilRoutes from "./publicoGasoil.routes.js";
 import usuariosPublicoRoutes from "./usuarioPublico.routes.js";
 import verificarToken from "../middleware/auth.middleware.js";
@@ -81,5 +82,6 @@ router.use("/dato-impuesto", datoImpuestoRoutes);
 router.use("/pendientes-responsable", pendienteResponsableRoutes);
 router.use("/entrega-epp", entregaEPPRoutes);
 router.use("/cargas-gasoil", cargaGasoilRoutes);
+router.use("/filtros-maquina", filtroMaquinaRoutes);
 
 export default router;
