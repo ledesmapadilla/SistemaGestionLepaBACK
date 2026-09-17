@@ -22,10 +22,16 @@ export const obtenerFiltros = async (req, res) => {
 
 // Alta y edición van por el mismo endpoint: se hace upsert por máquina y solo
 // se pisa el tipo de filtro que vino en el body, para no borrar los otros tres.
+// Acepta una máquina (`maquina`) o varias (`maquinas`): el mismo filtro sirve
+// para modelos distintos, así que se carga una sola vez para todas las que lo lleven.
 export const guardarFiltro = async (req, res) => {
   try {
-    const { maquina, tipo, items, observaciones } = req.body;
-    if (!maquina) return res.status(400).json({ msg: "La máquina es obligatoria." });
+    const { maquina, maquinas, tipo, items, observaciones } = req.body;
+
+    const ids = [
+      ...new Set((Array.isArray(maquinas) ? maquinas : [maquina]).filter(Boolean).map(String)),
+    ];
+    if (!ids.length) return res.status(400).json({ msg: "La máquina es obligatoria." });
     if (!TIPOS_FILTRO.includes(tipo)) return res.status(400).json({ msg: "Tipo de filtro inválido." });
 
     const limpios = limpiarItems(items);
@@ -39,13 +45,21 @@ export const guardarFiltro = async (req, res) => {
     const set = { [tipo]: limpios };
     if (observaciones !== undefined) set.observaciones = (observaciones || "").trim();
 
-    const filtro = await FiltroMaquina.findOneAndUpdate(
-      { maquina },
-      { $set: set },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    ).populate("maquina", "maquina");
+    const guardados = [];
+    for (const id of ids) {
+      const filtro = await FiltroMaquina.findOneAndUpdate(
+        { maquina: id },
+        { $set: set },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ).populate("maquina", "maquina");
+      guardados.push(filtro);
+    }
 
-    res.status(200).json({ msg: "Filtros guardados correctamente", filtro });
+    res.status(200).json({
+      msg: "Filtros guardados correctamente",
+      filtro: guardados[0],
+      filtros: guardados,
+    });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ msg: "Ya existen filtros cargados para esa máquina." });
