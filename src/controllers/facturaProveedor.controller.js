@@ -1,5 +1,6 @@
 import FacturaProveedor from "../models/facturaProveedor.js";
 import PagoProveedor from "../models/pagoProveedor.js";
+import { recalcularEstados } from "./pagoProveedor.controller.js";
 
 export const obtenerFacturasProveedores = async (req, res) => {
   try {
@@ -38,7 +39,12 @@ export const editarFacturaProveedor = async (req, res) => {
     if (!facturaActualizada) {
       return res.status(404).json({ msg: "Factura no encontrada" });
     }
-    res.status(200).json({ msg: "Factura actualizada", factura: facturaActualizada });
+    // Cambiar el total o el tipo de factura mueve el saldo: una factura que ya
+    // estaba saldada puede volver a quedar pendiente (y al reves), asi que se
+    // revisa el estado contra lo que se le imputo hasta ahora.
+    await recalcularEstados([facturaActualizada._id]);
+    const facturaFinal = await FacturaProveedor.findById(req.params.id).lean();
+    res.status(200).json({ msg: "Factura actualizada", factura: facturaFinal });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al editar factura de proveedor" });

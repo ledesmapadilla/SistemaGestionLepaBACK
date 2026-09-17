@@ -7,7 +7,7 @@ import ChequePropio from "../models/chequePropio.js";
 const totalFactura = (f) =>
   f.tipoFactura === "Factura X" || f.tipoFactura === "Factura B" ? f.total : f.total * 1.21;
 
-const recalcularEstados = async (facturaIds) => {
+export const recalcularEstados = async (facturaIds) => {
   const ids = [...new Set(facturaIds.map((id) => id?.toString()).filter(Boolean))];
   if (ids.length === 0) return;
 
