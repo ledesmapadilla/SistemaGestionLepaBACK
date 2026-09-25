@@ -227,15 +227,20 @@ export const eliminarItemRemito = async (req, res) => {
 /*
 | GET /remitos?obra=ID&estado=xxx
 | GET /remitos?disponibles=true  → remitos con saldo pendiente para facturación
+| GET /remitos?conFacturado=true → remitos con algo facturado (total o parcial), para notas de crédito
 */
 export const obtenerRemitos = async (req, res) => {
   try {
-    const { obra, estado, disponibles } = req.query;
+    const { obra, estado, disponibles, conFacturado } = req.query;
 
     const filtros = {};
     if (obra) filtros.obra = obra;
 
-    if (disponibles === "true") {
+    if (conFacturado === "true") {
+      // Para notas de crédito: todo remito con algo facturado, aunque la
+      // facturación sea parcial y siga en "Sin facturar".
+      filtros.$or = [{ estado: "Facturado" }, { montoFacturado: { $gt: 0 } }];
+    } else if (disponibles === "true") {
       filtros.estado = { $nin: ["Obra propia", "Facturado"] };
     } else if (estado) {
       filtros.estado = { $regex: `^${estado}$`, $options: "i" };

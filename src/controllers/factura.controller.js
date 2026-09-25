@@ -49,21 +49,49 @@ export const crearFactura = async (req, res) => {
     await nuevaFactura.save();
 
     if (tipoFactura === "Nota de Crédito") {
-      // Remitos a liberar: los del array propio de la NC + los de la factura asociada.
-      const idsLiberar = new Set((remitos || []).map((id) => id.toString()));
+      // Monto a descontar por remito: lo que facturó la factura asociada (si la
+      // hay) y, para remitos que solo vienen en la NC, el monto de la NC. Se
+      // descuenta en vez de poner 0 porque un remito puede tener varias
+      // facturas parciales y las demás siguen vigentes.
+      const descontar = {};
       if (facturaAsociada) {
         const original = await Factura.findOneAndUpdate(
           { numeroFactura: facturaAsociada },
           { estadoPago: "Anulada" },
           { new: false }
-        ).select("remitos").lean();
-        (original?.remitos || []).forEach((id) => idsLiberar.add(id.toString()));
+        ).select("remitos montosPorRemito").lean();
+        (original?.remitos || []).forEach((id) => {
+          const entrada = (original.montosPorRemito || []).find(
+            (m) => m.remitoId?.toString() === id.toString()
+          );
+          // Facturas viejas sin montosPorRemito: se libera el remito completo.
+          descontar[id.toString()] = entrada ? Number(entrada.monto) : Infinity;
+        });
       }
-      if (idsLiberar.size > 0) {
-        await Remito.updateMany(
-          { _id: { $in: [...idsLiberar] } },
-          { estado: "Sin facturar", montoFacturado: 0 }
+      (remitos || []).forEach((id) => {
+        if (descontar[id.toString()] !== undefined) return;
+        const entrada = (montosPorRemito || []).find(
+          (m) => m.remitoId?.toString() === id.toString()
         );
+        descontar[id.toString()] = entrada ? Math.abs(Number(entrada.monto)) : Infinity;
+      });
+
+      const ids = Object.keys(descontar);
+      if (ids.length > 0) {
+        const remitosArr = await Remito.find({ _id: { $in: ids } }).select("items montoFacturado").lean();
+        const bulkOps = remitosArr.map((r) => {
+          const totalRemito = Math.round(calcularTotalRemito(r.items) * 100) / 100;
+          const nuevoMonto = Math.max(
+            0,
+            Math.round(((r.montoFacturado || 0) - descontar[r._id.toString()]) * 100) / 100
+          );
+          const $set = {
+            montoFacturado: nuevoMonto,
+            estado: totalRemito > 0 && totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
+          };
+          return { updateOne: { filter: { _id: r._id }, update: { $set } } };
+        });
+        if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
       }
     } else if (montosPorRemito && montosPorRemito.length > 0) {
       const remitoIds = montosPorRemito.map((m) => m.remitoId);
