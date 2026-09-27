@@ -92,22 +92,27 @@ const backfillMontoFacturado = async () => {
 
 export const recalcularEstados = async (req, res) => {
   try {
-    let corregidos = 0;
-
     // 0) Completar el montoFacturado que falta, para que los pasos siguientes
     // decidan sobre el importe real y no sobre un 0 que no significa nada.
     const completados = await backfillMontoFacturado();
 
+    // Se lee solo lo necesario para el total (lean) y se escribe todo junto al
+    // final con bulkWrite: un update por remito, en serie, era lo que más
+    // demoraba la pantalla de remitos sin facturar.
+    const campos = "items.cantidad items.precioUnitario montoFacturado";
+    const ops = [];
+    const marcar = (id, estado) =>
+      ops.push({ updateOne: { filter: { _id: id }, update: { $set: { estado } } } });
+
     // 1) Cerrar: sin facturar pero ya sin saldo → "Facturado".
-    const aCerrar = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } });
+    const aCerrar = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } })
+      .select(campos)
+      .lean();
     for (const r of aCerrar) {
       const total = Math.round(calcTotal(r.items) * 100) / 100;
       // Un remito sin precio (total 0) no se cierra: si se sella como
       // "Facturado" queda bloqueado y nunca toma el precio de la obra.
-      if (total > 0 && total - (r.montoFacturado || 0) < 1) {
-        await Remito.findByIdAndUpdate(r._id, { $set: { estado: "Facturado" } });
-        corregidos++;
-      }
+      if (total > 0 && total - (r.montoFacturado || 0) < 1) marcar(r._id, "Facturado");
     }
 
     // 2) Reabrir: marcado "Facturado" pero con saldo pendiente real → vuelve a
@@ -117,14 +122,16 @@ export const recalcularEstados = async (req, res) => {
     // También alcanza a los remitos viejos, cuyo montoFacturado acaba de
     // reconstruirse en el paso 0. Se exige montoFacturado > 0: un 0 acá
     // significa "no se pudo determinar", y reabrir por las dudas sería peor.
-    const aReabrir = await Remito.find({ estado: "Facturado", montoFacturado: { $gt: 0 } });
+    const aReabrir = await Remito.find({ estado: "Facturado", montoFacturado: { $gt: 0 } })
+      .select(campos)
+      .lean();
     for (const r of aReabrir) {
       const total = Math.round(calcTotal(r.items) * 100) / 100;
-      if (total - (r.montoFacturado || 0) >= 1) {
-        await Remito.findByIdAndUpdate(r._id, { $set: { estado: "Sin facturar" } });
-        corregidos++;
-      }
+      if (total - (r.montoFacturado || 0) >= 1) marcar(r._id, "Sin facturar");
     }
+
+    if (ops.length > 0) await Remito.bulkWrite(ops);
+    const corregidos = ops.length;
 
     res.status(200).json({
       msg: `${corregidos} remito(s) corregido(s)`,
@@ -231,7 +238,7 @@ export const eliminarItemRemito = async (req, res) => {
 */
 export const obtenerRemitos = async (req, res) => {
   try {
-    const { obra, estado, disponibles, conFacturado } = req.query;
+    const { obra, estado, disponibles, conFacturado, obraCampos } = req.query;
 
     const filtros = {};
     if (obra) filtros.obra = obra;
@@ -246,9 +253,16 @@ export const obtenerRemitos = async (req, res) => {
       filtros.estado = { $regex: `^${estado}$`, $options: "i" };
     }
 
+    // ?obraCampos=a,b → de la obra trae solo esos campos. El array de precios
+    // de cada obra pesa mucho y los listados por cliente no lo usan.
+    const proyeccionObra = obraCampos
+      ? String(obraCampos).split(",").map((c) => c.trim()).filter(Boolean).join(" ")
+      : undefined;
+
     let remitos = await Remito.find(filtros)
-      .populate("obra")
-      .sort({ createdAt: -1 });
+      .populate("obra", proyeccionObra)
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (disponibles === "true") {
       remitos = remitos.filter((r) => {
@@ -270,7 +284,7 @@ export const obtenerRemitos = async (req, res) => {
     }
 
     const remitosSeguros = remitos.map((r) => ({
-      ...r.toObject(),
+      ...r,
       items: r.items || [],
     }));
 
