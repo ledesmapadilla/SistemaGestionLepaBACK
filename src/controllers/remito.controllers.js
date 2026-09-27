@@ -96,40 +96,74 @@ export const recalcularEstados = async (req, res) => {
     // decidan sobre el importe real y no sobre un 0 que no significa nada.
     const completados = await backfillMontoFacturado();
 
-    // Se lee solo lo necesario para el total (lean) y se escribe todo junto al
-    // final con bulkWrite: un update por remito, en serie, era lo que más
-    // demoraba la pantalla de remitos sin facturar.
-    const campos = "items.cantidad items.precioUnitario montoFacturado";
-    const ops = [];
-    const marcar = (id, estado) =>
-      ops.push({ updateOne: { filter: { _id: id }, update: { $set: { estado } } } });
+    // El total y el saldo se calculan dentro de Mongo y solo vuelven los
+    // remitos a corregir (casi siempre ninguno). Antes se bajaban todos los
+    // facturados para revisarlos acá, y eso demoraba la pantalla de remitos
+    // sin facturar.
+    const saldo = { $subtract: ["$total", "$montoFacturado"] };
+    const aCorregir = await Remito.aggregate([
+      { $match: { estado: { $in: ["Sin facturar", "Facturado"] }, montoFacturado: { $gt: 0 } } },
+      {
+        $project: {
+          estado: 1,
+          montoFacturado: 1,
+          total: {
+            $round: [
+              {
+                $sum: {
+                  $map: {
+                    input: { $ifNull: ["$items", []] },
+                    as: "i",
+                    in: {
+                      $multiply: [
+                        { $ifNull: ["$$i.cantidad", 0] },
+                        { $ifNull: ["$$i.precioUnitario", 0] },
+                      ],
+                    },
+                  },
+                },
+              },
+              2,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          $expr: {
+            $or: [
+              // 1) Cerrar: sin facturar pero ya sin saldo → "Facturado".
+              // Un remito sin precio (total 0) no se cierra: si se sella como
+              // "Facturado" queda bloqueado y nunca toma el precio de la obra.
+              {
+                $and: [
+                  { $eq: ["$estado", "Sin facturar"] },
+                  { $gt: ["$total", 0] },
+                  { $lt: [saldo, 1] },
+                ],
+              },
+              // 2) Reabrir: marcado "Facturado" pero con saldo pendiente real →
+              // vuelve a "Sin facturar" (facturado parcialmente). Pasa cuando el
+              // total sube después de haberse facturado, p. ej. al cargarle el
+              // precio a la obra de un remito que se había sellado en $0.
+              // También alcanza a los remitos viejos, cuyo montoFacturado acaba
+              // de reconstruirse en el paso 0. Se exige montoFacturado > 0 (en
+              // el primer $match): un 0 acá significa "no se pudo determinar",
+              // y reabrir por las dudas sería peor.
+              { $and: [{ $eq: ["$estado", "Facturado"] }, { $gte: [saldo, 1] }] },
+            ],
+          },
+        },
+      },
+      { $project: { estado: 1 } },
+    ]);
 
-    // 1) Cerrar: sin facturar pero ya sin saldo → "Facturado".
-    const aCerrar = await Remito.find({ estado: "Sin facturar", montoFacturado: { $gt: 0 } })
-      .select(campos)
-      .lean();
-    for (const r of aCerrar) {
-      const total = Math.round(calcTotal(r.items) * 100) / 100;
-      // Un remito sin precio (total 0) no se cierra: si se sella como
-      // "Facturado" queda bloqueado y nunca toma el precio de la obra.
-      if (total > 0 && total - (r.montoFacturado || 0) < 1) marcar(r._id, "Facturado");
-    }
-
-    // 2) Reabrir: marcado "Facturado" pero con saldo pendiente real → vuelve a
-    // "Sin facturar" (facturado parcialmente). Pasa cuando el total sube
-    // después de haberse facturado, p. ej. al cargarle el precio a la obra de
-    // un remito que se había sellado en $0.
-    // También alcanza a los remitos viejos, cuyo montoFacturado acaba de
-    // reconstruirse en el paso 0. Se exige montoFacturado > 0: un 0 acá
-    // significa "no se pudo determinar", y reabrir por las dudas sería peor.
-    const aReabrir = await Remito.find({ estado: "Facturado", montoFacturado: { $gt: 0 } })
-      .select(campos)
-      .lean();
-    for (const r of aReabrir) {
-      const total = Math.round(calcTotal(r.items) * 100) / 100;
-      if (total - (r.montoFacturado || 0) >= 1) marcar(r._id, "Sin facturar");
-    }
-
+    const ops = aCorregir.map((r) => ({
+      updateOne: {
+        filter: { _id: r._id },
+        update: { $set: { estado: r.estado === "Facturado" ? "Sin facturar" : "Facturado" } },
+      },
+    }));
     if (ops.length > 0) await Remito.bulkWrite(ops);
     const corregidos = ops.length;
 
