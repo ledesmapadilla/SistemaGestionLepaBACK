@@ -3,8 +3,15 @@ import Remito from "../models/remito.js";
 
 export const obtenerFacturas = async (req, res) => {
   try {
+    // De cada remito solo lo que usan las pantallas (número, fecha, total por
+    // ítems y nombre de la obra). Traer los remitos y las obras completas
+    // (con el array de precios) hacía pesar el listado varias veces más.
     const facturas = await Factura.find()
-      .populate({ path: "remitos", populate: { path: "obra" } })
+      .populate({
+        path: "remitos",
+        select: "remito fecha estado montoFacturado obra items.fecha items.cantidad items.precioUnitario",
+        populate: { path: "obra", select: "nombreobra razonsocial" },
+      })
       .sort({ createdAt: -1 })
       .lean();
     res.status(200).json(facturas);

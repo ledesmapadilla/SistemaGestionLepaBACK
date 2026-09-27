@@ -47,7 +47,41 @@ export const obtenerDatosPantalla = async (req, res) => {
 
 export const obtenerAsistencia = async (req, res) => {
   try {
-    const { fecha, anio, mes, desde, hasta } = req.query;
+    const { fecha, anio, mes, desde, hasta, soloHorometros } = req.query;
+    // Solo las lecturas de horómetro de toda la historia: [{ fecha, registros:
+    // [{ maquina, horometro }] }]. Es lo único que usa Service de máquinas, y
+    // bajar la asistencia completa pesaba ~500KB.
+    if (soloHorometros === "true") {
+      const conHorometro = {
+        $filter: {
+          input: { $ifNull: ["$registros", []] },
+          as: "r",
+          // Vale tanto si el horómetro quedó guardado como texto o como número.
+          cond: {
+            $and: [
+              { $ne: [{ $ifNull: ["$$r.horometro", null] }, null] },
+              { $ne: ["$$r.horometro", ""] },
+            ],
+          },
+        },
+      };
+      const docs = await Asistencia.aggregate([
+        // Días con al menos un registro con horómetro ($elemMatch: un $nin
+        // directo sobre el array descartaría el día si algún registro no lo tiene).
+        { $match: { registros: { $elemMatch: { horometro: { $nin: [null, ""] } } } } },
+        {
+          $project: {
+            _id: 0,
+            fecha: 1,
+            registros: {
+              $map: { input: conHorometro, as: "r", in: { maquina: "$$r.maquina", horometro: "$$r.horometro" } },
+            },
+          },
+        },
+        { $sort: { fecha: -1 } },
+      ]);
+      return res.status(200).json(docs);
+    }
     if (fecha) {
       const doc = await Asistencia.findOne({ fecha }).lean();
       return res.status(200).json(doc || null);
