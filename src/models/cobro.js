@@ -2,9 +2,11 @@ import mongoose from "mongoose";
 
 const medioPagoSchema = new mongoose.Schema(
   {
+    // "Saldo a favor" no es plata nueva: aplica el saldo que el cliente dejó
+    // en cobros anteriores (ver helpers/saldoAFavor.js).
     medioPago: {
       type: String,
-      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia", "Canje"],
+      enum: ["Efectivo", "Cheque", "E-Cheq", "Retenciones", "Transferencia", "Canje", "Saldo a favor"],
     },
     monto: { type: Number },
     numeroCheque: { type: String, default: "" },

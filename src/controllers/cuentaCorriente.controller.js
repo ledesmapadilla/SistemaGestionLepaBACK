@@ -1,5 +1,6 @@
 import Factura from "../models/factura.js";
 import Cobro from "../models/cobro.js";
+import { recibidoCobro } from "../helpers/saldoAFavor.js";
 
 const calcularTotalConIva = (f) =>
   f.tipoFactura === "Factura X" ? f.total : f.total * 1.21;
@@ -63,10 +64,10 @@ export const obtenerCuentaCorriente = async (req, res) => {
     });
 
     const movCobros = cobros.map((c) => {
-      const totalCobrado = (c.pagos || []).reduce(
-        (sum, p) => sum + (p.montoCobrado || 0),
-        0
-      );
+      // Se acredita la plata que entró, no lo imputado: si pagó de más o dejó
+      // un anticipo, el saldo queda negativo (a favor del cliente). La
+      // aplicación de "Saldo a favor" no acredita de nuevo.
+      const totalCobrado = recibidoCobro(c);
       const medios =
         c.mediosPago?.length > 0
           ? c.mediosPago.map((m) => m.medioPago).join(", ")
@@ -76,7 +77,12 @@ export const obtenerCuentaCorriente = async (req, res) => {
           (c.pagos || []).map((p) => p.factura?.numeroFactura).filter(Boolean)
         ),
       ];
-      const nroStr = numeros.length > 0 ? `Factura N° ${numeros.join(", ")} - ` : "";
+      const nroStr =
+        numeros.length > 0
+          ? `Factura N° ${numeros.join(", ")} - `
+          : !(c.pagos || []).length
+            ? "Anticipo - "
+            : "";
       return {
         _id: c._id,
         fecha: c.fecha,

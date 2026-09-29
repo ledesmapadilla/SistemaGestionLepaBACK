@@ -1,6 +1,86 @@
 import mongoose from "mongoose";
 import Cobro from "../models/cobro.js";
 import Factura from "../models/factura.js";
+import {
+  recibidoCobro,
+  imputadoCobro,
+  usadoSaldoAFavor,
+  saldoAFavorCliente,
+} from "../helpers/saldoAFavor.js";
+
+const pesos = (n) =>
+  Number(n).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+
+// Reglas de un cobro (alta o edición). Devuelve el mensaje de error o null.
+// - Sin facturas es un anticipo: todo lo recibido queda a favor del cliente.
+// - A una factura no se le imputa más que su saldo; el excedente queda a favor.
+// - "Saldo a favor" solo paga facturas y no puede superar el disponible.
+const validarCobro = async ({ cliente, mediosPago = [], pagos = [] }, excluirId = null) => {
+  if (!cliente) return "El cliente es obligatorio";
+  if (!mediosPago.length) return "Agregá al menos una forma de pago";
+  if (mediosPago.some((m) => !m.medioPago || !(Number(m.monto) > 0)))
+    return "Cada forma de pago necesita tipo y monto mayor a 0";
+  if (pagos.some((p) => !p.factura || !(Number(p.montoCobrado) > 0)))
+    return "Cada factura necesita un monto cobrado mayor a 0";
+
+  const cobro = { mediosPago, pagos };
+  const imputado = imputadoCobro(cobro);
+  const usado = usadoSaldoAFavor(cobro);
+  const recibido = recibidoCobro(cobro);
+
+  if (!pagos.length && usado > 0)
+    return "El saldo a favor solo se puede usar para cobrar facturas";
+  if (usado > imputado + 0.01)
+    return `El saldo a favor usado (${pesos(usado)}) supera lo imputado a facturas (${pesos(imputado)})`;
+  if (recibido + usado < imputado - 0.01)
+    return `Las formas de pago (${pesos(recibido + usado)}) no cubren lo imputado a facturas (${pesos(imputado)})`;
+
+  if (pagos.length) {
+    const ids = pagos.map((p) => new mongoose.Types.ObjectId(p.factura.toString()));
+    const [facturas, cobrados] = await Promise.all([
+      Factura.find({ _id: { $in: ids } }, "tipoFactura total numeroFactura").lean(),
+      Cobro.aggregate([
+        ...(excluirId ? [{ $match: { _id: { $ne: new mongoose.Types.ObjectId(excluirId) } } }] : []),
+        { $unwind: "$pagos" },
+        { $match: { "pagos.factura": { $in: ids } } },
+        { $group: { _id: "$pagos.factura", total: { $sum: "$pagos.montoCobrado" } } },
+      ]),
+    ]);
+    const facturaMap = Object.fromEntries(facturas.map((f) => [f._id.toString(), f]));
+    const cobradoMap = Object.fromEntries(cobrados.map((r) => [r._id.toString(), r.total]));
+    const enEsteCobro = {};
+    for (const p of pagos) {
+      const id = p.factura.toString();
+      enEsteCobro[id] = (enEsteCobro[id] || 0) + Number(p.montoCobrado);
+    }
+    for (const [id, monto] of Object.entries(enEsteCobro)) {
+      const f = facturaMap[id];
+      if (!f) return "Una de las facturas del cobro no existe";
+      const totalConIva = f.tipoFactura === "Factura X" ? f.total : f.total * 1.21;
+      const saldo = totalConIva - (cobradoMap[id] || 0);
+      if (monto > saldo + 0.01)
+        return `A la factura N° ${f.numeroFactura} se le imputan ${pesos(monto)} pero su saldo es ${pesos(Math.max(0, saldo))}. Lo que sobra queda como saldo a favor del cliente.`;
+    }
+  }
+
+  if (usado > 0) {
+    const saldoFinal = await saldoAFavorCliente(cliente, { excluirId, incluir: cobro });
+    if (saldoFinal < -0.01) {
+      const disponible = await saldoAFavorCliente(cliente, { excluirId });
+      return `El cliente tiene ${pesos(Math.max(0, disponible))} de saldo a favor; no alcanza para usar ${pesos(usado)}`;
+    }
+  }
+  return null;
+};
+
+// Un cobro que dejó saldo a favor no se puede borrar/cambiar si ese saldo ya
+// se usó en otro cobro: el cliente quedaría con saldo a favor negativo.
+const validarSaldoRestante = async (cliente, excluirId, incluir = null) => {
+  const saldo = await saldoAFavorCliente(cliente, { excluirId, incluir });
+  if (saldo < -0.01)
+    return `El saldo a favor que dejó este cobro ya se usó en otro cobro de ${cliente}. Primero modificá o borrá ese cobro.`;
+  return null;
+};
 
 const recalcularEstadoFacturas = async (facturaIds) => {
   const ids = [...new Set(facturaIds.map((id) => id?.toString()).filter(Boolean))];
@@ -73,6 +153,9 @@ export const crearCobro = async (req, res) => {
   try {
     const { fecha, cliente, medioPago, mediosPago, pagos } = req.body;
 
+    const error = await validarCobro({ cliente, mediosPago, pagos });
+    if (error) return res.status(400).json({ msg: error });
+
     const numerosCheque = (mediosPago || [])
       .filter((m) => (m.medioPago === "Cheque" || m.medioPago === "E-Cheq") && m.numeroCheque)
       .map((m) => m.numeroCheque);
@@ -102,6 +185,15 @@ export const editarCobro = async (req, res) => {
     const cobroAnterior = await Cobro.findById(req.params.id);
     if (!cobroAnterior) return res.status(404).json({ msg: "Cobro no encontrado" });
     const idsAnteriores = (cobroAnterior.pagos || []).map((p) => p.factura);
+
+    const error = await validarCobro(req.body, req.params.id);
+    if (error) return res.status(400).json({ msg: error });
+    // Si cambió el cliente, el anterior pierde el saldo a favor de este cobro.
+    const errorSaldo =
+      cobroAnterior.cliente !== req.body.cliente
+        ? await validarSaldoRestante(cobroAnterior.cliente, req.params.id)
+        : await validarSaldoRestante(req.body.cliente, req.params.id, req.body);
+    if (errorSaldo) return res.status(400).json({ msg: errorSaldo });
     const cobroActualizado = await Cobro.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -145,6 +237,10 @@ export const actualizarEstadoMedioPago = async (req, res) => {
 
 export const eliminarCobro = async (req, res) => {
   try {
+    const existente = await Cobro.findById(req.params.id, "cliente").lean();
+    if (!existente) return res.status(404).json({ msg: "Cobro no encontrado" });
+    const error = await validarSaldoRestante(existente.cliente, req.params.id);
+    if (error) return res.status(400).json({ msg: error });
     const cobro = await Cobro.findByIdAndDelete(req.params.id);
     if (!cobro) return res.status(404).json({ msg: "Cobro no encontrado" });
     await recalcularEstadoFacturas((cobro.pagos || []).map((p) => p.factura));
