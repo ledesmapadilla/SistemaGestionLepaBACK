@@ -146,11 +146,71 @@ export const editarFactura = async (req, res) => {
   }
 };
 
+// Deshace lo que hizo crearFactura al registrar la NC: la factura asociada
+// vuelve a "Pendiente" y a los remitos se les devuelve lo que la NC les había
+// descontado (con el mismo criterio de montos que se usó al crearla).
+const revertirNotaCredito = async (nc) => {
+  const devolver = {};
+  if (nc.facturaAsociada) {
+    // Si otra NC sigue apuntando a la misma factura, la factura queda anulada.
+    const otraNC = await Factura.exists({
+      _id: { $ne: nc._id },
+      tipoFactura: "Nota de Crédito",
+      facturaAsociada: nc.facturaAsociada,
+    });
+    const original = await Factura.findOne({
+      numeroFactura: nc.facturaAsociada,
+      tipoFactura: { $ne: "Nota de Crédito" },
+    }).select("remitos montosPorRemito estadoPago").lean();
+    if (original && !otraNC) {
+      if (original.estadoPago === "Anulada") {
+        await Factura.updateOne({ _id: original._id }, { estadoPago: "Pendiente" });
+      }
+      (original.remitos || []).forEach((id) => {
+        const entrada = (original.montosPorRemito || []).find(
+          (m) => m.remitoId?.toString() === id.toString()
+        );
+        devolver[id.toString()] = entrada ? Number(entrada.monto) : Infinity;
+      });
+    }
+  }
+  (nc.remitos || []).forEach((id) => {
+    if (devolver[id.toString()] !== undefined) return;
+    const entrada = (nc.montosPorRemito || []).find(
+      (m) => m.remitoId?.toString() === id.toString()
+    );
+    devolver[id.toString()] = entrada ? Math.abs(Number(entrada.monto)) : Infinity;
+  });
+
+  const ids = Object.keys(devolver);
+  if (ids.length === 0) return;
+  const remitosArr = await Remito.find({ _id: { $in: ids } }).select("items montoFacturado").lean();
+  const bulkOps = remitosArr.map((r) => {
+    const totalRemito = Math.round(calcularTotalRemito(r.items) * 100) / 100;
+    const nuevoMonto = Math.min(
+      totalRemito,
+      Math.round(((r.montoFacturado || 0) + devolver[r._id.toString()]) * 100) / 100
+    );
+    const $set = {
+      montoFacturado: nuevoMonto,
+      estado: totalRemito > 0 && totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
+    };
+    return { updateOne: { filter: { _id: r._id }, update: { $set } } };
+  });
+  if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
+};
+
 export const eliminarFactura = async (req, res) => {
   try {
     const factura = await Factura.findById(req.params.id);
     if (!factura) {
       return res.status(404).json({ msg: "Factura no encontrada" });
+    }
+
+    if (factura.tipoFactura === "Nota de Crédito") {
+      await revertirNotaCredito(factura);
+      await Factura.findByIdAndDelete(req.params.id);
+      return res.status(200).json({ msg: "Nota de crédito eliminada correctamente" });
     }
 
     const remitosArr = await Remito.find({ _id: { $in: factura.remitos } }).select("items montoFacturado").lean();
