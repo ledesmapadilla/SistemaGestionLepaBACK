@@ -38,6 +38,9 @@ export const agregarTareaSemana = async (req, res) => {
     if (!desde || !hasta) {
       return res.status(400).json({ msg: "Las fechas desde y hasta son obligatorias" });
     }
+    if (new Date(`${desde}T12:00:00Z`).getUTCDay() !== 1) {
+      return res.status(400).json({ msg: "La fecha desde tiene que ser un lunes" });
+    }
     if (hasta < desde) {
       return res.status(400).json({ msg: "La fecha hasta no puede ser anterior a desde" });
     }
@@ -52,6 +55,14 @@ export const agregarTareaSemana = async (req, res) => {
         return res.status(409).json({ msg: "La tarea ya está cargada en esa semana" });
       }
     }
+
+    // Arranca una semana nueva: se borran las de semanas anteriores de todos los
+    // responsables, así las tarjetas quedan en blanco. `hasta` es siempre el
+    // sábado de la semana, así que comparar los hasta compara las semanas.
+    await TareaSemana.updateMany(
+      { "tareas.hasta": { $lt: hasta } },
+      { $pull: { tareas: { hasta: { $lt: hasta } } } }
+    );
 
     const doc = await TareaSemana.findOneAndUpdate(
       { responsable },
