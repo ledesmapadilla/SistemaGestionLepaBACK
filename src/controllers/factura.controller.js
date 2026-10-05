@@ -1,5 +1,10 @@
 import Factura from "../models/factura.js";
 import Remito from "../models/remito.js";
+import {
+  calcularMontosFacturados,
+  calcularTotalRemito,
+  sincronizarRemitos,
+} from "../helpers/montoFacturado.js";
 
 export const obtenerFacturas = async (req, res) => {
   try {
@@ -21,18 +26,44 @@ export const obtenerFacturas = async (req, res) => {
   }
 };
 
-const calcularTotalRemito = (items = []) =>
-  items.reduce((sum, i) => sum + Number(i.cantidad) * Number(i.precioUnitario), 0);
+// El montoFacturado y el estado de los remitos NUNCA se suman/restan acá: se
+// recalculan desde las facturas vigentes con sincronizarRemitos (ver
+// helpers/montoFacturado.js). Así da igual en qué orden se carguen facturas y
+// notas de crédito.
+
+// Factura original (no NC) a la que apunta una NC: mismo cliente y número.
+const buscarOriginal = (cliente, numero) =>
+  Factura.findOne({
+    cliente,
+    numeroFactura: numero,
+    tipoFactura: { $ne: "Nota de Crédito" },
+  });
+
+const remitosAfectados = (...facturas) =>
+  facturas.flatMap((f) => (f?.remitos || []).map(String));
+
+// Si ninguna otra NC sigue apuntando a la factura, deja de estar anulada.
+const restaurarSiNoTieneNC = async (original, excluirNcId) => {
+  if (!original || original.estadoPago !== "Anulada") return;
+  const otraNC = await Factura.exists({
+    _id: { $ne: excluirNcId },
+    tipoFactura: "Nota de Crédito",
+    cliente: original.cliente,
+    facturaAsociada: original.numeroFactura,
+  });
+  if (!otraNC) await Factura.updateOne({ _id: original._id }, { estadoPago: "Pendiente" });
+};
 
 export const crearFactura = async (req, res) => {
   try {
     const { fecha, tipoFactura, numeroFactura, cliente, remitos, total, montosPorRemito, estadoPago, facturaAsociada } = req.body;
+    const esNotaCredito = tipoFactura === "Nota de Crédito";
 
-    // Un remito con total $0 no se puede facturar: quedaría marcado "Facturado"
-    // por un importe de cero y, a partir de ahí, bloqueado. Es el caso del
-    // remito automático de una obra de precio cerrado a la que todavía no se le
-    // cargó el precio: primero hay que definirlo en la obra.
-    if (tipoFactura !== "Nota de Crédito" && Array.isArray(remitos) && remitos.length > 0) {
+    if (!esNotaCredito && Array.isArray(remitos) && remitos.length > 0) {
+      // Un remito con total $0 no se puede facturar: quedaría marcado
+      // "Facturado" por un importe de cero y, a partir de ahí, bloqueado. Es el
+      // caso del remito automático de una obra de precio cerrado a la que
+      // todavía no se le cargó el precio: primero hay que definirlo en la obra.
       const aFacturar = await Remito.find({ _id: { $in: remitos } })
         .select("remito items")
         .lean();
@@ -45,6 +76,34 @@ export const crearFactura = async (req, res) => {
           msg: `El remito ${numeros} no tiene precio cargado (total $0) y no se puede facturar. Cargá el precio en la obra y volvé a intentar.`,
         });
       }
+
+      // No se factura dos veces lo mismo: lo pedido para cada remito no puede
+      // pasar su saldo pendiente según las facturas vigentes. Para refacturar,
+      // primero va la nota de crédito de la factura anterior.
+      const actuales = await calcularMontosFacturados(remitos);
+      const excedidos = aFacturar.filter((r) => {
+        const actual = actuales[String(r._id)];
+        if (!actual) return false;
+        const entrada = (montosPorRemito || []).find((m) => String(m.remitoId) === String(r._id));
+        const pedido = entrada ? Number(entrada.monto) || 0 : actual.total;
+        return pedido > actual.total - actual.monto + 1;
+      });
+      if (excedidos.length > 0) {
+        const numeros = excedidos.map((r) => `N° ${r.remito}`).join(", ");
+        return res.status(400).json({
+          msg: `El remito ${numeros} ya está facturado (o el monto supera su saldo pendiente). Si lo estás refacturando, primero cargá la nota de crédito de la factura anterior.`,
+        });
+      }
+    }
+
+    let original = null;
+    if (esNotaCredito && facturaAsociada) {
+      original = await buscarOriginal(cliente, facturaAsociada).select("remitos").lean();
+      if (!original) {
+        return res.status(400).json({
+          msg: `No existe la factura ${facturaAsociada} de ${cliente} para asociarle la nota de crédito.`,
+        });
+      }
     }
 
     const nuevaFactura = new Factura({
@@ -55,72 +114,9 @@ export const crearFactura = async (req, res) => {
     });
     await nuevaFactura.save();
 
-    if (tipoFactura === "Nota de Crédito") {
-      // Monto a descontar por remito: lo que facturó la factura asociada (si la
-      // hay) y, para remitos que solo vienen en la NC, el monto de la NC. Se
-      // descuenta en vez de poner 0 porque un remito puede tener varias
-      // facturas parciales y las demás siguen vigentes.
-      const descontar = {};
-      if (facturaAsociada) {
-        const original = await Factura.findOneAndUpdate(
-          { numeroFactura: facturaAsociada },
-          { estadoPago: "Anulada" },
-          { new: false }
-        ).select("remitos montosPorRemito").lean();
-        (original?.remitos || []).forEach((id) => {
-          const entrada = (original.montosPorRemito || []).find(
-            (m) => m.remitoId?.toString() === id.toString()
-          );
-          // Facturas viejas sin montosPorRemito: se libera el remito completo.
-          descontar[id.toString()] = entrada ? Number(entrada.monto) : Infinity;
-        });
-      }
-      (remitos || []).forEach((id) => {
-        if (descontar[id.toString()] !== undefined) return;
-        const entrada = (montosPorRemito || []).find(
-          (m) => m.remitoId?.toString() === id.toString()
-        );
-        descontar[id.toString()] = entrada ? Math.abs(Number(entrada.monto)) : Infinity;
-      });
+    if (original) await Factura.updateOne({ _id: original._id }, { estadoPago: "Anulada" });
 
-      const ids = Object.keys(descontar);
-      if (ids.length > 0) {
-        const remitosArr = await Remito.find({ _id: { $in: ids } }).select("items montoFacturado").lean();
-        const bulkOps = remitosArr.map((r) => {
-          const totalRemito = Math.round(calcularTotalRemito(r.items) * 100) / 100;
-          const nuevoMonto = Math.max(
-            0,
-            Math.round(((r.montoFacturado || 0) - descontar[r._id.toString()]) * 100) / 100
-          );
-          const $set = {
-            montoFacturado: nuevoMonto,
-            estado: totalRemito > 0 && totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
-          };
-          return { updateOne: { filter: { _id: r._id }, update: { $set } } };
-        });
-        if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
-      }
-    } else if (montosPorRemito && montosPorRemito.length > 0) {
-      const remitoIds = montosPorRemito.map((m) => m.remitoId);
-      const remitosArr = await Remito.find({ _id: { $in: remitoIds } }).select("items montoFacturado").lean();
-      const remitosMap = Object.fromEntries(remitosArr.map((r) => [r._id.toString(), r]));
-      const bulkOps = montosPorRemito.map(({ remitoId, monto }) => {
-        const remito = remitosMap[remitoId?.toString()];
-        if (!remito) return null;
-        const totalRemito = Math.round(calcularTotalRemito(remito.items) * 100) / 100;
-        const saldoPendiente = Math.round((totalRemito - (remito.montoFacturado || 0)) * 100) / 100;
-        const montoAplicado = Math.min(Math.round(Number(monto) * 100) / 100, saldoPendiente);
-        const nuevoMonto = Math.round(((remito.montoFacturado || 0) + montoAplicado) * 100) / 100;
-        const $set = { montoFacturado: nuevoMonto };
-        // Solo se cierra como "Facturado" si el remito tiene importe real:
-        // un total 0 nunca debe quedar sellado (ver validación de arriba).
-        if (totalRemito > 0 && totalRemito - nuevoMonto < 1) $set.estado = "Facturado";
-        return { updateOne: { filter: { _id: remitoId }, update: { $set } } };
-      }).filter(Boolean);
-      if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
-    } else {
-      await Remito.updateMany({ _id: { $in: remitos } }, { estado: "Facturado" });
-    }
+    await sincronizarRemitos(remitosAfectados(nuevaFactura, original));
 
     res.status(201).json({ msg: "Factura creada correctamente", factura: nuevaFactura });
   } catch (error) {
@@ -131,14 +127,73 @@ export const crearFactura = async (req, res) => {
 
 export const editarFactura = async (req, res) => {
   try {
-    const facturaActualizada = await Factura.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!facturaActualizada) {
+    const anterior = await Factura.findById(req.params.id).lean();
+    if (!anterior) {
       return res.status(404).json({ msg: "Factura no encontrada" });
     }
+
+    const cambios = req.body;
+    const tipo = cambios.tipoFactura ?? anterior.tipoFactura;
+    const numero = cambios.numeroFactura ?? anterior.numeroFactura;
+    const asociada = tipo === "Nota de Crédito"
+      ? (cambios.facturaAsociada ?? anterior.facturaAsociada ?? "")
+      : "";
+
+    // Una factura con nota de crédito está anulada: no se puede pasar a
+    // Pendiente/Pagada mientras exista la NC (hay que borrar la NC).
+    if (anterior.tipoFactura !== "Nota de Crédito" && cambios.estadoPago && cambios.estadoPago !== "Anulada") {
+      const tieneNC = await Factura.exists({
+        tipoFactura: "Nota de Crédito",
+        cliente: anterior.cliente,
+        facturaAsociada: anterior.numeroFactura,
+      });
+      if (tieneNC) {
+        return res.status(400).json({
+          msg: "La factura tiene una nota de crédito asociada y está anulada. Para reactivarla, borrá la nota de crédito.",
+        });
+      }
+    }
+
+    let nuevaOriginal = null;
+    if (tipo === "Nota de Crédito" && asociada && asociada !== anterior.facturaAsociada) {
+      nuevaOriginal = await buscarOriginal(anterior.cliente, asociada).lean();
+      if (!nuevaOriginal) {
+        return res.status(400).json({
+          msg: `No existe la factura ${asociada} de ${anterior.cliente} para asociarle la nota de crédito.`,
+        });
+      }
+    }
+
+    const facturaActualizada = await Factura.findByIdAndUpdate(
+      req.params.id,
+      cambios,
+      { new: true, runValidators: true }
+    );
+
+    const afectados = remitosAfectados(anterior, facturaActualizada);
+
+    // Si se renumera una factura, sus NC la siguen apuntando.
+    if (anterior.tipoFactura !== "Nota de Crédito" && numero !== anterior.numeroFactura) {
+      await Factura.updateMany(
+        { tipoFactura: "Nota de Crédito", cliente: anterior.cliente, facturaAsociada: anterior.numeroFactura },
+        { facturaAsociada: numero }
+      );
+    }
+
+    // NC que cambia (o deja) de factura asociada: la anterior se reactiva.
+    if (anterior.tipoFactura === "Nota de Crédito" && anterior.facturaAsociada &&
+        (tipo !== "Nota de Crédito" || asociada !== anterior.facturaAsociada)) {
+      const vieja = await buscarOriginal(anterior.cliente, anterior.facturaAsociada).lean();
+      await restaurarSiNoTieneNC(vieja, anterior._id);
+      afectados.push(...remitosAfectados(vieja));
+    }
+    if (nuevaOriginal) {
+      await Factura.updateOne({ _id: nuevaOriginal._id }, { estadoPago: "Anulada" });
+      afectados.push(...remitosAfectados(nuevaOriginal));
+    }
+
+    await sincronizarRemitos(afectados);
+
     res.status(200).json({ msg: "Factura actualizada", factura: facturaActualizada });
   } catch (error) {
     console.error(error);
@@ -146,94 +201,26 @@ export const editarFactura = async (req, res) => {
   }
 };
 
-// Deshace lo que hizo crearFactura al registrar la NC: la factura asociada
-// vuelve a "Pendiente" y a los remitos se les devuelve lo que la NC les había
-// descontado (con el mismo criterio de montos que se usó al crearla).
-const revertirNotaCredito = async (nc) => {
-  const devolver = {};
-  if (nc.facturaAsociada) {
-    // Si otra NC sigue apuntando a la misma factura, la factura queda anulada.
-    const otraNC = await Factura.exists({
-      _id: { $ne: nc._id },
-      tipoFactura: "Nota de Crédito",
-      facturaAsociada: nc.facturaAsociada,
-    });
-    const original = await Factura.findOne({
-      numeroFactura: nc.facturaAsociada,
-      tipoFactura: { $ne: "Nota de Crédito" },
-    }).select("remitos montosPorRemito estadoPago").lean();
-    if (original && !otraNC) {
-      if (original.estadoPago === "Anulada") {
-        await Factura.updateOne({ _id: original._id }, { estadoPago: "Pendiente" });
-      }
-      (original.remitos || []).forEach((id) => {
-        const entrada = (original.montosPorRemito || []).find(
-          (m) => m.remitoId?.toString() === id.toString()
-        );
-        devolver[id.toString()] = entrada ? Number(entrada.monto) : Infinity;
-      });
-    }
-  }
-  (nc.remitos || []).forEach((id) => {
-    if (devolver[id.toString()] !== undefined) return;
-    const entrada = (nc.montosPorRemito || []).find(
-      (m) => m.remitoId?.toString() === id.toString()
-    );
-    devolver[id.toString()] = entrada ? Math.abs(Number(entrada.monto)) : Infinity;
-  });
-
-  const ids = Object.keys(devolver);
-  if (ids.length === 0) return;
-  const remitosArr = await Remito.find({ _id: { $in: ids } }).select("items montoFacturado").lean();
-  const bulkOps = remitosArr.map((r) => {
-    const totalRemito = Math.round(calcularTotalRemito(r.items) * 100) / 100;
-    const nuevoMonto = Math.min(
-      totalRemito,
-      Math.round(((r.montoFacturado || 0) + devolver[r._id.toString()]) * 100) / 100
-    );
-    const $set = {
-      montoFacturado: nuevoMonto,
-      estado: totalRemito > 0 && totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
-    };
-    return { updateOne: { filter: { _id: r._id }, update: { $set } } };
-  });
-  if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
-};
-
 export const eliminarFactura = async (req, res) => {
   try {
-    const factura = await Factura.findById(req.params.id);
+    const factura = await Factura.findById(req.params.id).lean();
     if (!factura) {
       return res.status(404).json({ msg: "Factura no encontrada" });
     }
 
-    if (factura.tipoFactura === "Nota de Crédito") {
-      await revertirNotaCredito(factura);
-      await Factura.findByIdAndDelete(req.params.id);
-      return res.status(200).json({ msg: "Nota de crédito eliminada correctamente" });
+    const esNotaCredito = factura.tipoFactura === "Nota de Crédito";
+    let original = null;
+    if (esNotaCredito && factura.facturaAsociada) {
+      original = await buscarOriginal(factura.cliente, factura.facturaAsociada).lean();
+      await restaurarSiNoTieneNC(original, factura._id);
     }
 
-    const remitosArr = await Remito.find({ _id: { $in: factura.remitos } }).select("items montoFacturado").lean();
-    const remitosMap = Object.fromEntries(remitosArr.map((r) => [r._id.toString(), r]));
-    const bulkOps = factura.remitos.map((remitoRef) => {
-      const remito = remitosMap[remitoRef?.toString()];
-      if (!remito) return null;
-      const entrada = (factura.montosPorRemito || []).find(
-        (m) => m.remitoId?.toString() === remitoRef?.toString()
-      );
-      const monto = entrada ? Number(entrada.monto) : 0;
-      const totalRemito = Math.round(calcularTotalRemito(remito.items) * 100) / 100;
-      const nuevoMonto = Math.max(0, Math.round(((remito.montoFacturado || 0) - monto) * 100) / 100);
-      const $set = {
-        montoFacturado: nuevoMonto,
-        estado: totalRemito - nuevoMonto < 1 ? "Facturado" : "Sin facturar",
-      };
-      return { updateOne: { filter: { _id: remitoRef }, update: { $set } } };
-    }).filter(Boolean);
-    if (bulkOps.length > 0) await Remito.bulkWrite(bulkOps);
-
     await Factura.findByIdAndDelete(req.params.id);
-    res.status(200).json({ msg: "Factura eliminada correctamente" });
+    await sincronizarRemitos(remitosAfectados(factura, original));
+
+    res.status(200).json({
+      msg: esNotaCredito ? "Nota de crédito eliminada correctamente" : "Factura eliminada correctamente",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al eliminar factura" });

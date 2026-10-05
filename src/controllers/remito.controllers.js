@@ -1,5 +1,6 @@
 import Remito from "../models/remito.js";
 import Factura from "../models/factura.js";
+import { sincronizarRemitos } from "../helpers/montoFacturado.js";
 
 const calcTotal = (items = []) =>
   items.reduce((s, i) => s + Number(i.cantidad) * Number(i.precioUnitario), 0);
@@ -96,6 +97,12 @@ export const recalcularEstados = async (req, res) => {
     // decidan sobre el importe real y no sobre un 0 que no significa nada.
     const completados = await backfillMontoFacturado();
 
+    // 0b) Resincronizar el montoFacturado de todos los remitos que están en
+    // alguna factura con lo que dicen las facturas vigentes. Si algo quedó
+    // desfasado (p. ej. una NC cargada después de refacturar), se corrige solo.
+    const enFacturas = await Factura.distinct("remitos");
+    const resincronizados = await sincronizarRemitos(enFacturas);
+
     // El total y el saldo se calculan dentro de Mongo y solo vuelven los
     // remitos a corregir (casi siempre ninguno). Antes se bajaban todos los
     // facturados para revisarlos acá, y eso demoraba la pantalla de remitos
@@ -165,7 +172,7 @@ export const recalcularEstados = async (req, res) => {
       },
     }));
     if (ops.length > 0) await Remito.bulkWrite(ops);
-    const corregidos = ops.length;
+    const corregidos = ops.length + resincronizados;
 
     res.status(200).json({
       msg: `${corregidos} remito(s) corregido(s)`,
