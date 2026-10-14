@@ -1,4 +1,5 @@
 import CargaGasoil from "../models/cargaGasoil.js";
+import { regexTexto } from "../helpers/textoFlexible.js";
 
 // Valida los campos obligatorios de una carga. Devuelve el mensaje de error o
 // null si está todo bien.
@@ -68,8 +69,8 @@ export const obtenerCargasGasoil = async (req, res) => {
       if (hasta) filtros.fecha.$lte = hasta;
     }
 
-    if (cliente) filtros.cliente = cliente;
-    if (obra) filtros.obra = obra;
+    if (cliente) filtros.cliente = regexTexto(cliente);
+    if (obra) filtros.obra = regexTexto(obra);
     if (maquina) filtros.maquina = maquina;
     if (quienCarga) filtros.quienCarga = quienCarga;
 

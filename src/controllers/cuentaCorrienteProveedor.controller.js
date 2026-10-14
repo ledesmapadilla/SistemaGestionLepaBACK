@@ -1,5 +1,6 @@
 import FacturaProveedor from "../models/facturaProveedor.js";
 import PagoProveedor from "../models/pagoProveedor.js";
+import { regexTexto } from "../helpers/textoFlexible.js";
 
 const totalFactura = (f) =>
   f.tipoFactura === "Factura X" || f.tipoFactura === "Factura B" ? f.total : f.total * 1.21;
@@ -96,7 +97,7 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
     }
 
     // Detalle de un proveedor específico (Optimizado con índice por proveedor)
-    const filtro = { proveedor };
+    const filtro = { proveedor: regexTexto(proveedor) };
     const [facturas, pagos] = await Promise.all([
       FacturaProveedor.find(filtro).sort({ fecha: 1 }).lean(),
       PagoProveedor.find(filtro).sort({ fecha: 1 }).populate({ path: "pagos.factura", select: "numeroFactura" }).lean(),

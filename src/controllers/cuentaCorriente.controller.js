@@ -1,6 +1,7 @@
 import Factura from "../models/factura.js";
 import Cobro from "../models/cobro.js";
 import { recibidoCobro } from "../helpers/saldoAFavor.js";
+import { regexTexto } from "../helpers/textoFlexible.js";
 
 const calcularTotalConIva = (f) =>
   f.tipoFactura === "Factura X" ? f.total : f.total * 1.21;
@@ -8,7 +9,7 @@ const calcularTotalConIva = (f) =>
 export const obtenerCuentaCorriente = async (req, res) => {
   try {
     const { cliente } = req.query;
-    const filtro = cliente ? { cliente } : {};
+    const filtro = cliente ? { cliente: regexTexto(cliente) } : {};
 
     let queryFacturas = Factura.find(filtro)
       .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago facturaAsociada")

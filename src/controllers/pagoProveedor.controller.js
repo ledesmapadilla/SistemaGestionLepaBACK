@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import PagoProveedor from "../models/pagoProveedor.js";
 import FacturaProveedor from "../models/facturaProveedor.js";
+import { regexTexto } from "../helpers/textoFlexible.js";
 import Cobro from "../models/cobro.js";
 import ChequePropio from "../models/chequePropio.js";
 
@@ -41,12 +42,12 @@ export const obtenerPagosProveedores = async (req, res) => {
     const { obra, proveedor } = req.query;
     let pagoQuery = {};
     if (obra) {
-      const facturasConObra = await FacturaProveedor.find({ obra }, { _id: 1 }).lean();
+      const facturasConObra = await FacturaProveedor.find({ obra: regexTexto(obra) }, { _id: 1 }).lean();
       const ids = facturasConObra.map((f) => f._id);
       pagoQuery = { "pagos.factura": { $in: ids } };
     }
     if (proveedor) {
-      pagoQuery.proveedor = proveedor;
+      pagoQuery.proveedor = regexTexto(proveedor);
     }
     const pagos = await PagoProveedor.find(pagoQuery).sort({ createdAt: -1 }).lean();
     const facturaIds = [...new Set(

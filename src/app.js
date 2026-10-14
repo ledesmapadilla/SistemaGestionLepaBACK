@@ -1,3 +1,5 @@
+// Primero que todo: activa el recorte de espacios antes de que se creen los modelos.
+import "./server/textos.js";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
