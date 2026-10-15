@@ -22,9 +22,10 @@ const proveedorSchema = new mongoose.Schema(
       type: String,
       
     },
+    // Opcional: el personal dado de alta como proveedor no tiene teléfono.
+    // Único solo cuando está cargado (sparse); el controller nunca guarda "".
     telefono: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
       sparse: true,

@@ -5,6 +5,7 @@ const registroSchema = new mongoose.Schema({
   mediaFalta: { type: Boolean, default: false },
   ausente: { type: Boolean, default: false },
   remito: { type: Boolean, default: false },
+  compensar: { type: Boolean, default: false },
   entra: { type: String },
   sale: { type: String },
   maquina: { type: String },

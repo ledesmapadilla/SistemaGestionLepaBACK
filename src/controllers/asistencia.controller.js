@@ -47,7 +47,44 @@ export const obtenerDatosPantalla = async (req, res) => {
 
 export const obtenerAsistencia = async (req, res) => {
   try {
-    const { fecha, anio, mes, desde, hasta, soloHorometros } = req.query;
+    const { fecha, anio, mes, desde, hasta, soloHorometros, soloCompensar } = req.query;
+    // Solo los registros con "Compensar" activado, de toda la historia:
+    // [{ fecha, registros: [{ personal, entra, sale, observaciones }] }]. Es lo
+    // que usa la solapa "Horas compensadas" del resumen semanal. Los días
+    // ausente/media falta no compensan horas.
+    if (soloCompensar === "true") {
+      const compensados = {
+        $filter: {
+          input: { $ifNull: ["$registros", []] },
+          as: "r",
+          cond: {
+            $and: [
+              { $eq: ["$$r.compensar", true] },
+              { $ne: ["$$r.ausente", true] },
+              { $ne: ["$$r.mediaFalta", true] },
+            ],
+          },
+        },
+      };
+      const docs = await Asistencia.aggregate([
+        { $match: { registros: { $elemMatch: { compensar: true } } } },
+        {
+          $project: {
+            _id: 0,
+            fecha: 1,
+            registros: {
+              $map: {
+                input: compensados,
+                as: "r",
+                in: { personal: "$$r.personal", entra: "$$r.entra", sale: "$$r.sale", observaciones: "$$r.observaciones" },
+              },
+            },
+          },
+        },
+        { $sort: { fecha: 1 } },
+      ]);
+      return res.status(200).json(docs);
+    }
     // Solo las lecturas de horómetro de toda la historia: [{ fecha, registros:
     // [{ maquina, horometro }] }]. Es lo único que usa Service de máquinas, y
     // bajar la asistencia completa pesaba ~500KB.

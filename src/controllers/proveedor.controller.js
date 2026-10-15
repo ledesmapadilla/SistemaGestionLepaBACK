@@ -9,12 +9,22 @@ const razonSocialRepetida = async (razonsocial, idExcluir) => {
 };
 const MSG_REPETIDO = "Ya existe un proveedor con esa razón social";
 
+// El teléfono es opcional pero único (índice sparse): un "" contaría como valor
+// y chocaría entre proveedores sin teléfono, así que vacío = campo ausente.
+const sinTelefonoVacio = (body) => {
+  const datos = { ...body };
+  if (typeof datos.telefono === "string") datos.telefono = datos.telefono.trim();
+  const vacio = datos.telefono === "" || datos.telefono == null;
+  if (vacio) delete datos.telefono;
+  return { datos, vacio: vacio && "telefono" in body };
+};
+
 export const crearProveedor = async (req, res) => {
   try {
     if (await razonSocialRepetida(req.body.razonsocial)) {
       return res.status(400).json({ msg: MSG_REPETIDO, mensaje: MSG_REPETIDO });
     }
-    const nuevoProveedor = new Proveedor(req.body);
+    const nuevoProveedor = new Proveedor(sinTelefonoVacio(req.body).datos);
     await nuevoProveedor.save();
     res.status(201).json({
       msg: "Proveedor creado correctamente",
@@ -61,9 +71,10 @@ export const editarProveedor = async (req, res) => {
     if (await razonSocialRepetida(req.body.razonsocial, req.params.id)) {
       return res.status(400).json({ msg: MSG_REPETIDO, mensaje: MSG_REPETIDO });
     }
+    const { datos, vacio } = sinTelefonoVacio(req.body);
     const proveedorActualizado = await Proveedor.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      vacio ? { $set: datos, $unset: { telefono: 1 } } : datos,
       { new: true }
     );
 

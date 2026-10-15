@@ -1,4 +1,5 @@
 import Personal from "../models/personal.js";
+import { asegurarProveedorDePersonal } from "../helpers/proveedorDePersonal.js";
 
 export const crearPersonal = async (req, res) => {
   try {
@@ -10,6 +11,13 @@ export const crearPersonal = async (req, res) => {
       fechaAlta: req.body.fechaAlta || fechaHoy,
     });
     await nuevoPersonal.save();
+    // También queda dado de alta como proveedor. Si falla, la persona ya está
+    // creada: se registra el error pero no se corta el alta.
+    try {
+      await asegurarProveedorDePersonal(nuevoPersonal.nombre);
+    } catch (errorProveedor) {
+      console.error("No se pudo crear el proveedor del personal:", errorProveedor);
+    }
     res.status(201).json({
       msg: "Personal creado correctamente",
       personal: nuevoPersonal,
