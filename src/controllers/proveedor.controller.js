@@ -24,7 +24,14 @@ export const crearProveedor = async (req, res) => {
     if (await razonSocialRepetida(req.body.razonsocial)) {
       return res.status(400).json({ msg: MSG_REPETIDO, mensaje: MSG_REPETIDO });
     }
-    const nuevoProveedor = new Proveedor(sinTelefonoVacio(req.body).datos);
+    // En el alta manual el teléfono es obligatorio (el personal se da de alta
+    // por helpers/proveedorDePersonal.js, que no pasa por acá).
+    const { datos } = sinTelefonoVacio(req.body);
+    if (!datos.telefono) {
+      const msg = "El teléfono es obligatorio";
+      return res.status(400).json({ msg, mensaje: msg });
+    }
+    const nuevoProveedor = new Proveedor(datos);
     await nuevoProveedor.save();
     res.status(201).json({
       msg: "Proveedor creado correctamente",
