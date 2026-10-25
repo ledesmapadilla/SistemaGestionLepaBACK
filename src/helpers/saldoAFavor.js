@@ -1,4 +1,4 @@
-import Cobro from "../models/cobro.js";
+import Cobro, { PROVEEDOR_FUERA } from "../models/cobro.js";
 
 // Forma de pago que no es plata nueva: consume el saldo a favor que el
 // cliente dejó en cobros anteriores (pagó de más o dejó un anticipo).
@@ -26,7 +26,7 @@ export const usadoSaldoAFavor = (c) =>
 // `excluirId` saca un cobro (el que se edita/borra) y `incluir` suma el cobro
 // propuesto, para validar el resultado antes de guardarlo.
 export const saldoAFavorCliente = async (cliente, { excluirId, incluir } = {}) => {
-  const cobros = await Cobro.find({ cliente }, "mediosPago pagos").lean();
+  const cobros = await Cobro.find({ cliente, ...PROVEEDOR_FUERA }, "mediosPago pagos").lean();
   const lista = cobros.filter((c) => !excluirId || c._id.toString() !== excluirId.toString());
   if (incluir) lista.push(incluir);
   const saldo = lista.reduce((s, c) => s + recibidoCobro(c) - imputadoCobro(c), 0);

@@ -1,5 +1,5 @@
 import Factura from "../models/factura.js";
-import Cobro from "../models/cobro.js";
+import Cobro, { PROVEEDOR_FUERA } from "../models/cobro.js";
 import { recibidoCobro } from "../helpers/saldoAFavor.js";
 import { regexTexto } from "../helpers/textoFlexible.js";
 
@@ -24,7 +24,7 @@ export const obtenerCuentaCorriente = async (req, res) => {
       });
     }
 
-    let queryCobros = Cobro.find(filtro)
+    let queryCobros = Cobro.find({ ...filtro, ...PROVEEDOR_FUERA })
       .select("fecha cliente medioPago mediosPago pagos")
       .sort({ fecha: 1 })
       .lean();

@@ -1,5 +1,6 @@
 import FacturaProveedor from "../models/facturaProveedor.js";
 import PagoProveedor from "../models/pagoProveedor.js";
+import Cobro from "../models/cobro.js";
 import { regexTexto } from "../helpers/textoFlexible.js";
 
 const totalFactura = (f) =>
@@ -20,7 +21,7 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
         ]
       };
 
-      const [facturasAgg, pagosAgg] = await Promise.all([
+      const [facturasAgg, pagosAgg, devolucionesAgg] = await Promise.all([
         FacturaProveedor.aggregate([
           {
             $group: {
@@ -59,6 +60,11 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
               credito: { $sum: "$montoPago" }
             }
           }
+        ]),
+        // Devoluciones del proveedor (se le pagó de más y nos devolvió): suben el saldo.
+        Cobro.aggregate([
+          { $match: { origen: "proveedor" } },
+          { $group: { _id: "$cliente", debito: { $sum: { $sum: "$mediosPago.monto" } } } }
         ])
       ]);
 
@@ -84,6 +90,12 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
         resumen[p._id].credito += p.credito || 0;
       });
 
+      devolucionesAgg.forEach((d) => {
+        if (!d._id) return;
+        if (!resumen[d._id]) resumen[d._id] = { proveedor: d._id, debito: 0, credito: 0 };
+        resumen[d._id].debito += d.debito || 0;
+      });
+
       // Creamos la lista resumen simulando los movimientos individuales que espera el front
       const listaResumen = Object.values(resumen).map((r) => ({
         proveedor: r.proveedor,
@@ -98,9 +110,10 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
 
     // Detalle de un proveedor específico (Optimizado con índice por proveedor)
     const filtro = { proveedor: regexTexto(proveedor) };
-    const [facturas, pagos] = await Promise.all([
+    const [facturas, pagos, devoluciones] = await Promise.all([
       FacturaProveedor.find(filtro).sort({ fecha: 1 }).lean(),
       PagoProveedor.find(filtro).sort({ fecha: 1 }).populate({ path: "pagos.factura", select: "numeroFactura" }).lean(),
+      Cobro.find({ cliente: regexTexto(proveedor), origen: "proveedor" }).sort({ fecha: 1 }).lean(),
     ]);
 
     const movFacturas = facturas.map((f) => {
@@ -138,7 +151,24 @@ export const obtenerCuentaCorrienteProveedor = async (req, res) => {
       };
     });
 
-    const movimientos = [...movFacturas, ...movPagos].sort((a, b) => {
+    const movDevoluciones = devoluciones.map((d) => {
+      const medios = (d.mediosPago || [])
+        .map((m) => (m.numeroCheque ? `${m.medioPago} N° ${m.numeroCheque}` : m.medioPago))
+        .join(", ");
+      return {
+        _id: d._id,
+        fecha: d.fecha,
+        proveedor: d.cliente,
+        tipo: "Devolución",
+        numeroFactura: "Devolución",
+        descripcion: [medios, d.observaciones].filter(Boolean).join(" — ") || "-",
+        obra: "",
+        debito: (d.mediosPago || []).reduce((s, m) => s + (m.monto || 0), 0),
+        credito: 0,
+      };
+    });
+
+    const movimientos = [...movFacturas, ...movPagos, ...movDevoluciones].sort((a, b) => {
       const diff = new Date(a.fecha) - new Date(b.fecha);
       if (diff !== 0) return diff;
       return a.tipo === "Factura" ? -1 : 1;

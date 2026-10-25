@@ -46,6 +46,12 @@ const cobroSchema = new mongoose.Schema(
     medioPago: { type: String },
     mediosPago: [medioPagoSchema],
     pagos: [pagoSchema],
+    // "proveedor": devolución de un proveedor al que se le pagó de más. Va
+    // acá para que sus cheques entren en cartera; `cliente` guarda el nombre
+    // del proveedor y nunca tiene facturas imputadas. Queda fuera de cobros,
+    // cuenta corriente y saldo a favor de clientes (ver PROVEEDOR_FUERA).
+    origen: { type: String, enum: ["cliente", "proveedor"], default: "cliente" },
+    observaciones: { type: String, default: "" },
   },
   { timestamps: true }
 );
@@ -55,3 +61,6 @@ cobroSchema.index({ "pagos.factura": 1 });
 cobroSchema.index({ createdAt: -1 });
 
 export default mongoose.model("Cobro", cobroSchema);
+
+// Filtro para dejar afuera las devoluciones de proveedores en todo lo de clientes.
+export const PROVEEDOR_FUERA = { origen: { $ne: "proveedor" } };

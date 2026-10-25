@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Cobro from "../models/cobro.js";
+import Cobro, { PROVEEDOR_FUERA } from "../models/cobro.js";
 import Factura from "../models/factura.js";
 import {
   recibidoCobro,
@@ -123,7 +123,9 @@ export const recalcularTodasLasFacturas = async (req, res) => {
 
 export const obtenerCobros = async (req, res) => {
   try {
-    const cobros = await Cobro.find().sort({ createdAt: -1 }).lean();
+    // Las devoluciones de proveedores solo se piden desde Cheques (?incluirProveedores=true).
+    const filtro = req.query.incluirProveedores === "true" ? {} : PROVEEDOR_FUERA;
+    const cobros = await Cobro.find(filtro).sort({ createdAt: -1 }).lean();
 
     const facturaIds = [...new Set(
       cobros.flatMap((c) => (c.pagos || []).map((p) => p.factura?.toString()).filter(Boolean))
@@ -258,7 +260,7 @@ export const obtenerChequesEnCartera = async (req, res) => {
         "mediosPago.medioPago": { $in: ["Cheque", "E-Cheq"] },
         "mediosPago.estado": { $in: ["En cartera", null, ""] }
       },
-      { cliente: 1, mediosPago: 1 }
+      { cliente: 1, mediosPago: 1, origen: 1 }
     ).lean();
 
     const filas = [];
@@ -270,7 +272,7 @@ export const obtenerChequesEnCartera = async (req, res) => {
             _id: `${cobro._id}-${medioIndex}`,
             cobroId: cobro._id,
             medioIndex,
-            cliente: cobro.cliente,
+            cliente: cobro.origen === "proveedor" ? `${cobro.cliente} (proveedor)` : cobro.cliente,
             numeroCheque: m.numeroCheque || "",
             valor: m.monto,
             fechaVencimiento: m.fechaCobro || "",

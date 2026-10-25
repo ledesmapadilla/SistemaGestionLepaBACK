@@ -4,6 +4,7 @@ import FacturaProveedor from "../models/facturaProveedor.js";
 import { regexTexto } from "../helpers/textoFlexible.js";
 import Cobro from "../models/cobro.js";
 import ChequePropio from "../models/chequePropio.js";
+import { saldoProveedor, sumaMedios } from "../helpers/saldoProveedor.js";
 
 const totalFactura = (f) =>
   f.tipoFactura === "Factura X" || f.tipoFactura === "Factura B" ? f.total : f.total * 1.21;
@@ -217,5 +218,96 @@ export const eliminarPagoProveedor = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al eliminar pago de proveedor" });
+  }
+};
+
+// ── Devoluciones de proveedores ─────────────────────────────────────
+// Cuando a un proveedor se le pagó de más (saldo negativo) y nos devuelve la
+// plata. Se guarda como Cobro con origen "proveedor" para que los cheques
+// entren en cartera (Contable → Cheques) y se puedan usar como cualquier otro.
+const MEDIOS_DEVOLUCION = ["Cheque", "E-Cheq", "Efectivo", "Transferencia"];
+const pesos = (n) => Number(n).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+
+export const obtenerDevolucionesProveedores = async (req, res) => {
+  try {
+    const filtro = { origen: "proveedor" };
+    if (req.query.proveedor) filtro.cliente = regexTexto(req.query.proveedor);
+    const devoluciones = await Cobro.find(filtro, "fecha cliente mediosPago observaciones createdAt")
+      .sort({ fecha: -1 })
+      .lean();
+    res.status(200).json(devoluciones.map((d) => ({ ...d, proveedor: d.cliente })));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al obtener devoluciones de proveedores" });
+  }
+};
+
+export const crearDevolucionProveedor = async (req, res) => {
+  try {
+    const { fecha, proveedor, observaciones = "", mediosPago = [] } = req.body;
+    if (!fecha || !proveedor) return res.status(400).json({ msg: "Fecha y proveedor son obligatorios" });
+    if (!mediosPago.length) return res.status(400).json({ msg: "Agregá al menos una forma de cobro" });
+    for (const m of mediosPago) {
+      if (!MEDIOS_DEVOLUCION.includes(m.medioPago) || !(Number(m.monto) > 0))
+        return res.status(400).json({ msg: "Cada forma de cobro necesita tipo y monto mayor a 0" });
+      if ((m.medioPago === "Cheque" || m.medioPago === "E-Cheq") && (!m.numeroCheque?.trim() || !m.fechaCobro))
+        return res.status(400).json({ msg: "Cada cheque necesita número y fecha de vencimiento" });
+    }
+
+    const saldo = await saldoProveedor(proveedor);
+    const total = sumaMedios({ mediosPago });
+    if (saldo > -0.01)
+      return res.status(400).json({ msg: `${proveedor} no tiene saldo a nuestro favor` });
+    if (total > -saldo + 0.01)
+      return res.status(400).json({ msg: `La devolución (${pesos(total)}) supera lo que nos debe ${proveedor} (${pesos(-saldo)})` });
+
+    const numeros = mediosPago
+      .filter((m) => m.medioPago === "Cheque" || m.medioPago === "E-Cheq")
+      .map((m) => m.numeroCheque.trim());
+    if (numeros.length) {
+      const dup = await Cobro.findOne({
+        mediosPago: { $elemMatch: { medioPago: { $in: ["Cheque", "E-Cheq"] }, numeroCheque: { $in: numeros } } },
+      }).lean();
+      if (dup) {
+        const n = dup.mediosPago.find((m) => numeros.includes(m.numeroCheque))?.numeroCheque;
+        return res.status(400).json({ msg: `El cheque N° ${n} ya está cargado` });
+      }
+    }
+
+    const devolucion = await Cobro.create({
+      fecha,
+      cliente: proveedor,
+      origen: "proveedor",
+      observaciones,
+      mediosPago: mediosPago.map((m) => ({
+        medioPago: m.medioPago,
+        monto: Number(m.monto),
+        numeroCheque: (m.numeroCheque || "").trim(),
+        fechaCobro: m.fechaCobro || "",
+      })),
+      pagos: [],
+    });
+    res.status(201).json({ msg: "Devolución registrada", devolucion });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al registrar la devolución" });
+  }
+};
+
+export const eliminarDevolucionProveedor = async (req, res) => {
+  try {
+    const devolucion = await Cobro.findOne({ _id: req.params.id, origen: "proveedor" });
+    if (!devolucion) return res.status(404).json({ msg: "Devolución no encontrada" });
+    // Si un cheque ya se usó (pago a proveedor, depósito, cambio) no se puede borrar.
+    const usado = devolucion.mediosPago.find(
+      (m) => (m.medioPago === "Cheque" || m.medioPago === "E-Cheq") && m.estado && m.estado !== "En cartera"
+    );
+    if (usado)
+      return res.status(400).json({ msg: `El cheque N° ${usado.numeroCheque} ya no está en cartera (${usado.estado}). Primero revertilo en Cheques.` });
+    await Cobro.deleteOne({ _id: devolucion._id });
+    res.status(200).json({ msg: "Devolución eliminada" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al eliminar la devolución" });
   }
 };
