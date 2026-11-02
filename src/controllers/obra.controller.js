@@ -9,15 +9,31 @@ import Remito from "../models/remito.js";
 // mayúsculas ni espacios sobrantes (el servicio se escribe a mano).
 const normTrabajo = (s) => (s ?? "").toString().trim().toLowerCase();
 
-const buscarPrecioVigente = (precios, clasificacion, trabajo, fechaRef) => {
+// "Días", "dias" y "DIAS " son la misma unidad.
+const normUnidad = (s) =>
+  (s ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+
+// Con `unidad`, solo compiten los precios de esa unidad: el precio por hora y
+// el precio por día de una misma máquina son listas separadas. Si no hay
+// ningún precio en esa unidad devuelve null (nunca aplica un precio por hora a
+// un ítem en días).
+const buscarPrecioVigente = (precios, clasificacion, trabajo, fechaRef, unidad) => {
   const trabajoNorm = normTrabajo(trabajo);
-  const candidatos = precios.filter(
+  let candidatos = precios.filter(
     (p) =>
       (clasificacion === "Alquiler"
         ? p.clasificacion?.startsWith("Alquiler")
         : p.clasificacion === clasificacion) &&
       (!trabajo || normTrabajo(p.trabajo) === trabajoNorm)
   );
+  if (unidad) {
+    candidatos = candidatos.filter((p) => normUnidad(p.unidad) === normUnidad(unidad));
+  }
   if (candidatos.length === 0) return null;
   if (candidatos.length === 1) return candidatos[0];
 
@@ -97,7 +113,9 @@ const recalcularPreciosRemitos = async (obraId, precios) => {
         precios,
         mapa.clasificacion,
         mapa.trabajo,
-        item.fecha
+        item.fecha,
+        // El precio cerrado es uno solo por obra: no se filtra por unidad.
+        mapa.clasificacion === "Precio cerrado" ? undefined : item.unidad
       );
       if (!precioVigente) continue;
 
