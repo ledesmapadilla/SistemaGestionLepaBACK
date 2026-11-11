@@ -1,0 +1,471 @@
+[
+  {
+    "_id": "69ef621239efdb2d8b38f2f0",
+    "fecha": "2026-04-17",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 4000000,
+        "numeroCheque": "",
+        "fechaCobro": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef55c3eeb855d30ffb2ffd",
+        "montoCobrado": 4000000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-04-27T13:18:10.348Z",
+    "updatedAt": "2026-04-27T13:18:10.348Z",
+    "__v": 0
+  },
+  {
+    "_id": "69ef625839efdb2d8b38f38b",
+    "fecha": "2026-04-24",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 3672280,
+        "numeroCheque": "",
+        "fechaCobro": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef55c3eeb855d30ffb2ffd",
+        "montoCobrado": 3672280,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-04-27T13:19:20.662Z",
+    "updatedAt": "2026-04-27T13:19:20.662Z",
+    "__v": 0
+  },
+  {
+    "_id": "69ef639bcf6a515087c4308c",
+    "fecha": "2026-04-24",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 327720,
+        "numeroCheque": "",
+        "fechaCobro": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef55f33282a27f94803406",
+        "montoCobrado": 327720,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-04-27T13:24:43.228Z",
+    "updatedAt": "2026-04-27T13:24:43.228Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1065a2c26e1478e3e62833",
+    "fecha": "2026-05-01",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 4000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef558d236dbfed7f55492d",
+        "montoCobrado": 1533100,
+        "observaciones": ""
+      },
+      {
+        "factura": "69ef55f33282a27f94803406",
+        "montoCobrado": 2466900,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-05-22T14:18:10.662Z",
+    "updatedAt": "2026-05-22T14:18:10.662Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a10660fc26e1478e3e62842",
+    "fecha": "2026-05-08",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 4000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef55f33282a27f94803406",
+        "montoCobrado": 3128570,
+        "observaciones": ""
+      },
+      {
+        "factura": "69ef563c3282a27f948034ad",
+        "montoCobrado": 871430,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-05-22T14:19:59.262Z",
+    "updatedAt": "2026-05-22T14:19:59.262Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a10676ac26e1478e3e629d7",
+    "fecha": "2026-05-15",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 2220600,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "69ef563c3282a27f948034ad",
+        "montoCobrado": 352570,
+        "observaciones": ""
+      },
+      {
+        "factura": "69ef5fb40d0ab98371716b38",
+        "montoCobrado": 1868030,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-05-22T14:25:46.906Z",
+    "updatedAt": "2026-05-22T14:25:46.906Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a16f3958625deb5294034f7",
+    "fecha": "2026-05-22",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 4000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6a5e7ed80445264b712603a0",
+        "montoCobrado": 4000000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-05-27T13:37:25.697Z",
+    "updatedAt": "2026-05-27T13:37:25.697Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8447b476caddb1c7260622",
+    "fecha": "2026-08-14",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6a5e7dc954e53fc6e5642404",
+        "montoCobrado": 1200000,
+        "observaciones": ""
+      },
+      {
+        "factura": "6a5e7e88d81427cbc15827fe",
+        "montoCobrado": 3800000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-08-18T11:53:24.382Z",
+    "updatedAt": "2026-08-18T11:53:24.382Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a898f174acbf7811a7f7c07",
+    "fecha": "2026-08-21",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6a5e7e88d81427cbc15827fe",
+        "montoCobrado": 5000000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-08-22T11:59:19.501Z",
+    "updatedAt": "2026-08-22T11:59:19.501Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a92c7062d38df88dec8585d",
+    "fecha": "2026-08-28",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6a5e7e88d81427cbc15827fe",
+        "montoCobrado": 900000,
+        "observaciones": ""
+      },
+      {
+        "factura": "6a5e7eb2d81427cbc1582809",
+        "montoCobrado": 3900000,
+        "observaciones": ""
+      },
+      {
+        "factura": "6a5e7ed80445264b712603a0",
+        "montoCobrado": 200000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-08-29T11:48:22.273Z",
+    "updatedAt": "2026-08-29T11:48:22.273Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd12cbb1c73f09b6f29d59",
+    "fecha": "2026-09-11",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [],
+    "createdAt": "2026-09-30T13:46:51.998Z",
+    "updatedAt": "2026-11-11T11:58:17.909Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd133dcbe901867679423a",
+    "fecha": "2026-09-19",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [],
+    "createdAt": "2026-09-30T13:48:45.529Z",
+    "updatedAt": "2026-11-11T11:58:17.909Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd13a9f0bba6efab08f0d1",
+    "fecha": "2026-09-25",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [],
+    "createdAt": "2026-09-30T13:50:33.573Z",
+    "updatedAt": "2026-11-11T11:58:17.909Z",
+    "__v": 0
+  },
+  {
+    "_id": "6acf6aae56c2cc9ee0cacb5d",
+    "fecha": "2026-10-14",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 10,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6acf6a9056c2cc9ee0cacb50",
+        "montoCobrado": 10,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-10-14T11:42:38.652Z",
+    "updatedAt": "2026-10-14T11:42:38.652Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adcb0d3c2fad32a65284b1b",
+    "fecha": "2026-10-23",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6ace1fdc2528f71893c99df5",
+        "montoCobrado": 5000000,
+        "observaciones": ""
+      }
+    ],
+    "createdAt": "2026-10-24T13:21:23.989Z",
+    "updatedAt": "2026-10-24T13:21:23.989Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae88ceb1fdd4c722fd73124",
+    "fecha": "2026-10-30",
+    "cliente": "Momba",
+    "mediosPago": [
+      {
+        "medioPago": "Efectivo",
+        "monto": 5000000,
+        "numeroCheque": "",
+        "fechaCobro": "",
+        "estado": "En cartera",
+        "proveedor": "",
+        "tasaInteres": null,
+        "gastosPorc": null,
+        "montoDescontado": null,
+        "fechaCambio": "",
+        "observaciones": ""
+      }
+    ],
+    "pagos": [
+      {
+        "factura": "6ace1fdc2528f71893c99df5",
+        "montoCobrado": 5000000,
+        "observaciones": ""
+      }
+    ],
+    "origen": "cliente",
+    "observaciones": "",
+    "createdAt": "2026-11-02T13:15:23.241Z",
+    "updatedAt": "2026-11-02T13:15:23.241Z",
+    "__v": 0
+  }
+]
