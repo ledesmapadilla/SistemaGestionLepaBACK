@@ -5,6 +5,7 @@ import {
   calcularTotalRemito,
   sincronizarRemitos,
 } from "../helpers/montoFacturado.js";
+import { imputarSaldoAFavorAlFacturar } from "../helpers/imputarSaldoAFavor.js";
 
 export const obtenerFacturas = async (req, res) => {
   try {
@@ -118,7 +119,18 @@ export const crearFactura = async (req, res) => {
 
     await sincronizarRemitos(remitosAfectados(nuevaFactura, original));
 
-    res.status(201).json({ msg: "Factura creada correctamente", factura: nuevaFactura });
+    // Si el cliente ya había pagado por adelantado (saldo a favor), se imputa
+    // solo a sus facturas impagas más viejas. Si falla, la factura igual queda.
+    let imputacion = null;
+    if (!esNotaCredito) {
+      try {
+        imputacion = await imputarSaldoAFavorAlFacturar(cliente, fecha);
+      } catch (error) {
+        console.error("Error imputando saldo a favor:", error);
+      }
+    }
+
+    res.status(201).json({ msg: "Factura creada correctamente", factura: nuevaFactura, imputacion });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error al crear factura" });
