@@ -17,6 +17,9 @@ const registroSchema = new mongoose.Schema({
   extras: { type: [extraSchema], default: [] },
   observaciones: { type: String, default: "" },
   pagado: { type: Number, default: 0 },
+  // Pagado que tenía antes de tachar el nombre (el tachado lo pisa con el total
+  // a pagar); al destachar se restaura.
+  pagadoPrevio: { type: Number, default: 0 },
   marcado: { type: Number, default: 0 },
   seleccionado: { type: Boolean, default: false },
   // La fila automática de diferencia horaria (hs extras / horas descontadas) fue
