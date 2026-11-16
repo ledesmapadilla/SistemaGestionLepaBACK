@@ -337,6 +337,88 @@ export const obtenerRemitos = async (req, res) => {
 };
 
 /*
+| GET /remitos/facturados → remitos con algo facturado (total o parcial), cada
+| uno con las facturas/NC que lo incluyen: [{ ...remito, total, facturas: [...] }]
+| La obra viene reducida a razonsocial/nombreobra y de las facturas solo lo
+| que usa el listado. Una factura figura como `anulada` si su estadoPago es
+| "Anulada" o tiene una NC del mismo cliente asociada (misma regla que
+| helpers/montoFacturado.js).
+*/
+export const obtenerRemitosFacturados = async (req, res) => {
+  try {
+    const remitos = await Remito.find({
+      $or: [{ estado: "Facturado" }, { montoFacturado: { $gt: 0 } }],
+    })
+      .select("obra remito fecha estado montoFacturado oc items.cantidad items.precioUnitario")
+      .populate("obra", "razonsocial nombreobra")
+      .sort({ fecha: -1, remito: -1 })
+      .lean();
+
+    const ids = remitos.map((r) => r._id);
+    const facturas = ids.length
+      ? await Factura.find({ remitos: { $in: ids } })
+          .select("fecha tipoFactura numeroFactura cliente remitos total estadoPago facturaAsociada montosPorRemito")
+          .lean()
+      : [];
+
+    const numeros = facturas
+      .filter((f) => f.tipoFactura !== "Nota de Crédito")
+      .map((f) => f.numeroFactura);
+    const ncs = numeros.length
+      ? await Factura.find({
+          tipoFactura: "Nota de Crédito",
+          facturaAsociada: { $in: numeros },
+        })
+          .select("cliente facturaAsociada numeroFactura")
+          .lean()
+      : [];
+    const ncPorFactura = new Map(
+      ncs.map((nc) => [`${nc.cliente}|${nc.facturaAsociada}`, nc.numeroFactura])
+    );
+
+    const facturasPorRemito = new Map();
+    for (const f of facturas) {
+      const esNC = f.tipoFactura === "Nota de Crédito";
+      const ncAnula = esNC ? "" : ncPorFactura.get(`${f.cliente}|${f.numeroFactura}`) || "";
+      for (const rid of f.remitos || []) {
+        const id = String(rid);
+        const asignado = (f.montosPorRemito || []).find((m) => String(m.remitoId) === id);
+        const lista = facturasPorRemito.get(id) || [];
+        lista.push({
+          _id: f._id,
+          fecha: f.fecha,
+          tipoFactura: f.tipoFactura,
+          numeroFactura: f.numeroFactura,
+          total: f.total,
+          monto: asignado ? Number(asignado.monto) || 0 : null,
+          estadoPago: f.estadoPago,
+          facturaAsociada: f.facturaAsociada || "",
+          anulada: !esNC && (f.estadoPago === "Anulada" || !!ncAnula),
+          ncAnula,
+        });
+        facturasPorRemito.set(id, lista);
+      }
+    }
+
+    const resultado = remitos.map((r) => {
+      const { items, ...resto } = r;
+      return {
+        ...resto,
+        total: redondear(calcTotal(items || [])),
+        facturas: (facturasPorRemito.get(String(r._id)) || []).sort((a, b) =>
+          String(a.fecha).localeCompare(String(b.fecha))
+        ),
+      };
+    });
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Error al obtener remitos facturados" });
+  }
+};
+
+/*
 | GET /remitos/existe/:numero → { existe: bool }
 | Chequeo liviano de número de remito ya usado (sin bajar toda la colección).
 */
